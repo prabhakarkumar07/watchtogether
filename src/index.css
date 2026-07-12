@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-ink-faint/20;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  body {
+    @apply font-body bg-void text-ink antialiased;
+    background-image: radial-gradient(120% 120% at 50% -10%, rgba(139, 92, 246, 0.16) 0%, rgba(10, 11, 16, 0) 55%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  html.light body {
+    @apply bg-slate-100 text-slate-900;
+    background-image: radial-gradient(120% 120% at 50% -10%, rgba(139, 92, 246, 0.12) 0%, rgba(241, 245, 249, 0) 55%);
+  }
+
+  /* Respect reduced-motion preferences everywhere */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Visible keyboard focus ring for accessibility */
+  :focus-visible {
+    outline: 2px solid #8b5cf6;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(139, 92, 246, 0.35);
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.55);
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-glass;
+  }
+
+  html.light .glass {
+    @apply bg-white/60 border-black/5;
+  }
+
+  .glass-panel {
+    @apply glass rounded-2xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-marquee-violet to-purple-700
+      px-4 py-2.5 font-semibold text-white shadow-glow transition-all duration-200
+      hover:brightness-110 hover:shadow-glow active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl glass px-4 py-2.5 font-medium text-ink
+      transition-all duration-200 hover:bg-white/[0.09] active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  html.light .btn-secondary {
+    @apply text-slate-800 hover:bg-white/80;
+  }
+
+  .btn-icon {
+    @apply inline-flex h-9 w-9 items-center justify-center rounded-full glass transition-all duration-200
+      hover:bg-white/[0.12] active:scale-90;
+  }
+
+  .input-field {
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-ink
+      placeholder:text-ink-faint outline-none transition-colors duration-200 focus:border-marquee-violet/60 focus:bg-white/[0.07];
+  }
+
+  html.light .input-field {
+    @apply border-black/10 bg-white/70 text-slate-900 placeholder:text-slate-400 focus:bg-white;
+  }
+
+  /* Ticket-stub shaped chip for the room code, referencing a torn cinema ticket */
+  .ticket-chip {
+    position: relative;
+    -webkit-mask-image: var(--ticket-mask, none);
+  }
+
+  .ticket-chip::before,
+  .ticket-chip::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    background: theme('colors.void.DEFAULT');
+    border-radius: 999px;
+    transform: translateY(-50%);
+  }
+
+  html.light .ticket-chip::before,
+  html.light .ticket-chip::after {
+    background: theme('colors.slate.100');
+  }
+
+  .ticket-chip::before {
+    left: -7px;
+  }
+  .ticket-chip::after {
+    right: -7px;
+  }
+
+  /* Cinema marquee bulb strip — the page's signature element */
+  .marquee-strip {
+    display: flex;
+    gap: 6px;
+  }
+  .marquee-strip span {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: theme('colors.marquee.amber');
+    animation: pulseBulb 2.4s ease-in-out infinite;
+  }
+}
