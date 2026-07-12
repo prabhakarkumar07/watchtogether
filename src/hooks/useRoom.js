@@ -40,6 +40,7 @@ export function useRoom({ username, onToast }) {
   const selfIdRef = useRef(nanoid(8))
   const usernameRef = useRef(username)
   const heartbeatRef = useRef(null)
+  const calledPeersRef = useRef(new Set())
   usernameRef.current = username
 
   // Kept in refs (not just state) so long-lived PeerJS event listeners always
@@ -481,10 +482,12 @@ export function useRoom({ username, onToast }) {
       // Let everyone know we are switching to screenshare mode
       loadVideo({ type: 'screenshare', sharerId: selfId })
       
+      calledPeersRef.current.clear()
       // Call every other participant to send them the stream
       participants.forEach((p) => {
         if (p.id !== selfId) {
           peerRef.current.call(p.id, stream)
+          calledPeersRef.current.add(p.id)
         }
       })
 
@@ -496,6 +499,19 @@ export function useRoom({ username, onToast }) {
       toast.error?.('Could not start screen share.')
     }
   }, [isHost, participants, loadVideo, toast, stopScreenShare])
+
+  // Automatically call any participants that join AFTER we started sharing
+  useEffect(() => {
+    if (outgoingStream && peerRef.current) {
+      const selfId = isHost ? peerRef.current?.id : selfIdRef.current
+      participants.forEach((p) => {
+        if (p.id !== selfId && !calledPeersRef.current.has(p.id)) {
+          peerRef.current.call(p.id, outgoingStream)
+          calledPeersRef.current.add(p.id)
+        }
+      })
+    }
+  }, [participants, outgoingStream, isHost])
 
   useEffect(() => () => leaveRoom(true), []) // eslint-disable-line react-hooks/exhaustive-deps
 

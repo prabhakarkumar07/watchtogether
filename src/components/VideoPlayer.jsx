@@ -242,7 +242,7 @@ export default function VideoPlayer({
     }
     if (source.type === 'screenshare') {
       const activeStream = outgoingStream || incomingStream
-      return <ScreenShareEngine key="screenshare" stream={activeStream} onReady={commonProps.onReady} />
+      return <ScreenShareEngine key="screenshare" stream={activeStream} isLocal={!!outgoingStream} onReady={commonProps.onReady} />
     }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
   }, [source, engineKey, incomingStream, outgoingStream])
