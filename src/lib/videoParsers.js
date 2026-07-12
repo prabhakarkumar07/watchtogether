@@ -59,10 +59,11 @@ export function parseVideoUrl(rawUrl) {
     return { type: 'universal', id: trimmed, url: trimmed }
   }
 
+  // If it's a valid URL but not playable directly, treat it as an external link
   return {
-    type: 'unsupported',
-    reason:
-      'This URL is not supported. Try YouTube, Vimeo, Twitch, Dailymotion, a direct .mp4/.m3u8 link, or use Screen Share for any other site.',
+    type: 'external',
+    id: trimmed,
+    url: trimmed,
   }
 }
 

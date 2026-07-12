@@ -16,6 +16,7 @@ import YouTubeEngine from './players/YouTubeEngine.jsx'
 import VimeoEngine from './players/VimeoEngine.jsx'
 import ScreenShareEngine from './players/ScreenShareEngine.jsx'
 import ReactPlayerEngine from './players/ReactPlayerEngine.jsx'
+import ExternalLinkEngine from './players/ExternalLinkEngine.jsx'
 import { parseVideoUrl, parseVideoUrlSync } from '../lib/videoParsers.js'
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -253,6 +254,11 @@ export default function VideoPlayer({
     }
     if (source.type === 'universal') {
       return <ReactPlayerEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
+    }
+    if (source.type === 'external') {
+      // External links don't have a loading state, they are instantly ready
+      setTimeout(commonProps.onReady, 0)
+      return <ExternalLinkEngine key={engineKey} url={source.url} />
     }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
   }, [source, engineKey, incomingStream, outgoingStream, volume])
