@@ -138,6 +138,10 @@ export default function App() {
             savedVolume={savedVolume}
             savedSpeed={savedSpeed}
             onVolumeChange={setSavedVolume}
+            incomingStream={room.incomingStream}
+            outgoingStream={room.outgoingStream}
+            onStartScreenShare={room.startScreenShare}
+            onStopScreenShare={room.stopScreenShare}
           />
         </div>
 

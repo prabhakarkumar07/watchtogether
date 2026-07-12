@@ -31,6 +31,8 @@ export function useRoom({ username, onToast }) {
   const [participants, setParticipants] = useState([])
   const [messages, setMessages] = useState([])
   const [videoState, setVideoState] = useState(initialVideoState())
+  const [incomingStream, setIncomingStream] = useState(null)
+  const [outgoingStream, setOutgoingStream] = useState(null)
 
   const peerRef = useRef(null)
   const connectionsRef = useRef(new Map()) // guestPeerId -> DataConnection (host only)
@@ -134,9 +136,14 @@ export function useRoom({ username, onToast }) {
       setParticipants([])
       setMessages([])
       setVideoState(initialVideoState())
+      setIncomingStream(null)
+      if (outgoingStream) {
+        outgoingStream.getTracks().forEach(t => t.stop())
+        setOutgoingStream(null)
+      }
       if (!silent) toast.info?.('You left the room.')
     },
-    [stopHeartbeat, toast]
+    [stopHeartbeat, toast, outgoingStream]
   )
 
   // ---------- shared: applying a control action to local video state ----------
@@ -257,6 +264,27 @@ export function useRoom({ username, onToast }) {
     [addMessage, applyControlAction, broadcast, buildParticipantList, toast]
   )
 
+  // ---------- call handling (for screen sharing) ----------
+
+  const setupCallListener = useCallback((peer) => {
+    peer.on('call', (call) => {
+      // Answer the call without sending any stream back
+      call.answer()
+      
+      call.on('stream', (remoteStream) => {
+        setIncomingStream(remoteStream)
+      })
+      
+      call.on('close', () => {
+        setIncomingStream(null)
+      })
+      
+      call.on('error', () => {
+        setIncomingStream(null)
+      })
+    })
+  }, [])
+
   // ---------- public actions ----------
 
   const createRoom = useCallback(() => {
@@ -282,7 +310,7 @@ export function useRoom({ username, onToast }) {
 
         heartbeatRef.current = setInterval(() => {
           setVideoState((prev) => {
-            if (prev.source && prev.isPlaying) {
+            if (prev.source && prev.isPlaying && prev.source.type !== 'screenshare') {
               const elapsed = (Date.now() - prev.updatedAt) / 1000
               const time = prev.time + elapsed * prev.playbackRate
               broadcast({ type: 'control', action: 'heartbeat', payload: { time, isPlaying: true } })
@@ -292,6 +320,8 @@ export function useRoom({ username, onToast }) {
           })
         }, HEARTBEAT_MS)
       })
+
+      setupCallListener(peer)
 
       peer.on('connection', (conn) => wireGuestConnection(conn))
 
@@ -311,7 +341,7 @@ export function useRoom({ username, onToast }) {
     }
 
     attemptCreate()
-  }, [broadcast, toast, wireGuestConnection])
+  }, [broadcast, toast, wireGuestConnection, setupCallListener])
 
   const joinRoom = useCallback(
     (rawCode) => {
@@ -343,6 +373,8 @@ export function useRoom({ username, onToast }) {
           setStatus('connected')
           toast.success?.(`Joined room ${code}!`)
         })
+
+        setupCallListener(peer)
 
         conn.on('data', (data) => handleHostData(data))
 
@@ -394,7 +426,7 @@ export function useRoom({ username, onToast }) {
         }
       }
     },
-    [addMessage, applyControlAction, leaveRoom, toast]
+    [addMessage, applyControlAction, leaveRoom, toast, setupCallListener]
   )
 
   const sendChatMessage = useCallback(
@@ -431,6 +463,40 @@ export function useRoom({ username, onToast }) {
   const seek = useCallback((time) => dispatchControl('seek', { time }), [dispatchControl])
   const setSpeed = useCallback((rate, time) => dispatchControl('speed', { rate, time }), [dispatchControl])
 
+  const startScreenShare = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      setOutgoingStream(stream)
+      
+      const selfId = isHost ? peerRef.current?.id : selfIdRef.current
+      
+      // Let everyone know we are switching to screenshare mode
+      loadVideo({ type: 'screenshare', sharerId: selfId })
+      
+      // Call every other participant to send them the stream
+      participants.forEach((p) => {
+        if (p.id !== selfId) {
+          peerRef.current.call(p.id, stream)
+        }
+      })
+
+      // When user stops sharing via the browser's native UI (e.g. "Stop sharing" button)
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenShare()
+      }
+    } catch (err) {
+      toast.error?.('Could not start screen share.')
+    }
+  }, [isHost, participants, loadVideo, toast, stopScreenShare])
+
+  const stopScreenShare = useCallback(() => {
+    if (outgoingStream) {
+      outgoingStream.getTracks().forEach((track) => track.stop())
+      setOutgoingStream(null)
+      loadVideo(null)
+    }
+  }, [outgoingStream, loadVideo])
+
   useEffect(() => () => leaveRoom(true), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
@@ -450,5 +516,9 @@ export function useRoom({ username, onToast }) {
     pause,
     seek,
     setSpeed,
+    startScreenShare,
+    stopScreenShare,
+    incomingStream,
+    outgoingStream,
   }
 }

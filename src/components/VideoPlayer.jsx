@@ -14,6 +14,7 @@ import {
 import NativeVideoEngine from './players/NativeVideoEngine.jsx'
 import YouTubeEngine from './players/YouTubeEngine.jsx'
 import VimeoEngine from './players/VimeoEngine.jsx'
+import ScreenShareEngine from './players/ScreenShareEngine.jsx'
 import { parseVideoUrl } from '../lib/videoParsers.js'
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
@@ -40,6 +41,10 @@ export default function VideoPlayer({
   savedVolume,
   savedSpeed,
   onVolumeChange,
+  incomingStream,
+  outgoingStream,
+  onStartScreenShare,
+  onStopScreenShare,
 }) {
   const [urlInput, setUrlInput] = useState('')
   const [loadError, setLoadError] = useState('')
@@ -111,12 +116,12 @@ export default function VideoPlayer({
       setLocalDuration(duration || 0)
     }, 250)
     return () => clearInterval(pollRef.current)
-  }, [seekPreview])
+  }, [seekPreview, source])
 
   // ---------- reconcile with authoritative room state (drift correction) ----------
 
   useEffect(() => {
-    if (!videoState?.source || !engineRef.current || !ready) return
+    if (!videoState?.source || videoState.source.type === 'screenshare' || !engineRef.current || !ready) return
     let cancelled = false
 
     ;(async () => {
@@ -235,8 +240,12 @@ export default function VideoPlayer({
     if (source.type === 'vimeo') {
       return <VimeoEngine key={engineKey} ref={engineRef} videoId={source.id} {...commonProps} />
     }
+    if (source.type === 'screenshare') {
+      const activeStream = outgoingStream || incomingStream
+      return <ScreenShareEngine key="screenshare" stream={activeStream} onReady={commonProps.onReady} />
+    }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
-  }, [source, engineKey])
+  }, [source, engineKey, incomingStream, outgoingStream])
 
   return (
     <div className="glass-panel flex flex-1 flex-col gap-4 p-4 sm:p-5">
@@ -256,8 +265,17 @@ export default function VideoPlayer({
         </div>
         <button onClick={handleLoadClick} className="btn-primary shrink-0" aria-label="Load video">
           <Film className="h-4 w-4" />
-          Load Video
+          Load
         </button>
+        {outgoingStream ? (
+          <button onClick={onStopScreenShare} className="btn-primary bg-marquee-coral/20 text-marquee-coral hover:bg-marquee-coral/30 shrink-0" aria-label="Stop Share">
+            Stop Share
+          </button>
+        ) : (
+          <button onClick={onStartScreenShare} className="btn-primary bg-marquee-violet/20 text-marquee-violet hover:bg-marquee-violet/30 shrink-0" aria-label="Share Screen">
+            Share Screen
+          </button>
+        )}
       </div>
 
       {recentVideos?.length > 0 && (
@@ -305,87 +323,89 @@ export default function VideoPlayer({
             )}
 
             {/* Custom control bar — identical across all three engines */}
-            <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-              <input
-                type="range"
-                min={0}
-                max={localDuration || 0}
-                step={0.1}
-                value={Math.min(displayTime, localDuration || 0)}
-                onChange={(e) => setSeekPreview(Number(e.target.value))}
-                onMouseUp={(e) => commitSeek(Number(e.target.value))}
-                onTouchEnd={(e) => commitSeek(Number(e.target.value))}
-                onKeyUp={(e) => commitSeek(Number(e.target.value))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
-                aria-label="Seek"
-              />
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={handlePlayPause}
-                  className="btn-icon h-8 w-8 shrink-0 bg-white/10"
-                  aria-label={localPlaying ? 'Pause' : 'Play'}
-                >
-                  {localPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 pl-0.5" />}
-                </button>
-
-                <span className="font-mono text-xs text-white/80 tabular-nums">
-                  {formatTime(displayTime)} / {formatTime(localDuration)}
-                </span>
-
-                <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-                  <div className="hidden items-center gap-1.5 sm:flex">
-                    <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label="Mute">
-                      <VolumeIcon className="h-4 w-4" />
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={1}
-                      step={0.05}
-                      value={volume}
-                      onChange={(e) => setVolume(Number(e.target.value))}
-                      className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
-                      aria-label="Volume"
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSpeedMenu((v) => !v)}
-                      className="btn-icon h-8 w-fit gap-1 bg-white/10 px-2 text-xs font-medium"
-                      aria-label="Playback speed"
-                      aria-expanded={showSpeedMenu}
-                    >
-                      <Gauge className="h-3.5 w-3.5" />
-                      {speed}x
-                    </button>
-                    {showSpeedMenu && (
-                      <div className="glass absolute bottom-10 right-0 z-10 flex w-20 flex-col overflow-hidden rounded-xl p-1">
-                        {SPEEDS.map((s) => (
-                          <button
-                            key={s}
-                            onClick={() => handleSpeedPick(s)}
-                            className={`rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/10 ${
-                              s === speed ? 'text-marquee-amber' : 'text-white/90'
-                            }`}
-                          >
-                            {s}x
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
+            {source.type !== 'screenshare' && (
+              <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                <input
+                  type="range"
+                  min={0}
+                  max={localDuration || 0}
+                  step={0.1}
+                  value={Math.min(displayTime, localDuration || 0)}
+                  onChange={(e) => setSeekPreview(Number(e.target.value))}
+                  onMouseUp={(e) => commitSeek(Number(e.target.value))}
+                  onTouchEnd={(e) => commitSeek(Number(e.target.value))}
+                  onKeyUp={(e) => commitSeek(Number(e.target.value))}
+                  className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
+                  aria-label="Seek"
+                />
+                <div className="flex items-center gap-2 sm:gap-3">
                   <button
-                    onClick={toggleFullscreen}
-                    className="btn-icon h-8 w-8 bg-white/10"
-                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    onClick={handlePlayPause}
+                    className="btn-icon h-8 w-8 shrink-0 bg-white/10"
+                    aria-label={localPlaying ? 'Pause' : 'Play'}
                   >
-                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    {localPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 pl-0.5" />}
                   </button>
+
+                  <span className="font-mono text-xs text-white/80 tabular-nums">
+                    {formatTime(displayTime)} / {formatTime(localDuration)}
+                  </span>
+
+                  <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+                    <div className="hidden items-center gap-1.5 sm:flex">
+                      <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label="Mute">
+                        <VolumeIcon className="h-4 w-4" />
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={volume}
+                        onChange={(e) => setVolume(Number(e.target.value))}
+                        className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
+                        aria-label="Volume"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowSpeedMenu((v) => !v)}
+                        className="btn-icon h-8 w-fit gap-1 bg-white/10 px-2 text-xs font-medium"
+                        aria-label="Playback speed"
+                        aria-expanded={showSpeedMenu}
+                      >
+                        <Gauge className="h-3.5 w-3.5" />
+                        {speed}x
+                      </button>
+                      {showSpeedMenu && (
+                        <div className="glass absolute bottom-10 right-0 z-10 flex w-20 flex-col overflow-hidden rounded-xl p-1">
+                          {SPEEDS.map((s) => (
+                            <button
+                              key={s}
+                              onClick={() => handleSpeedPick(s)}
+                              className={`rounded-lg px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/10 ${
+                                s === speed ? 'text-marquee-amber' : 'text-white/90'
+                              }`}
+                            >
+                              {s}x
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={toggleFullscreen}
+                      className="btn-icon h-8 w-8 bg-white/10"
+                      aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    >
+                      {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
