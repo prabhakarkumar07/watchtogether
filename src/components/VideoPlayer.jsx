@@ -318,7 +318,9 @@ export default function VideoPlayer({
       {/* Player surface */}
       <div
         ref={containerRef}
-        className={`group relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-black ${
+        className={`group relative flex w-full items-center justify-center overflow-hidden rounded-2xl bg-black ${
+          source?.type === 'external' ? 'min-h-[420px]' : 'aspect-video'
+        } ${
           isFullscreen ? 'fixed inset-0 z-50 aspect-auto rounded-none' : ''
         }`}
       >
