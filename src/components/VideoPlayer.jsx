@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Play,
   Pause,
@@ -15,9 +15,10 @@ import NativeVideoEngine from './players/NativeVideoEngine.jsx'
 import YouTubeEngine from './players/YouTubeEngine.jsx'
 import VimeoEngine from './players/VimeoEngine.jsx'
 import ScreenShareEngine from './players/ScreenShareEngine.jsx'
-import ReactPlayerEngine from './players/ReactPlayerEngine.jsx'
 import ExternalLinkEngine from './players/ExternalLinkEngine.jsx'
 import { parseVideoUrl, parseVideoUrlSync } from '../lib/videoParsers.js'
+
+const ReactPlayerEngine = lazy(() => import('./players/ReactPlayerEngine.jsx'))
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const DRIFT_TOLERANCE_SECONDS = 1.5
@@ -253,12 +254,15 @@ export default function VideoPlayer({
       return <ScreenShareEngine key={streamKey} stream={activeStream} isLocal={!!outgoingStream} volume={volume} onReady={commonProps.onReady} />
     }
     if (source.type === 'universal') {
-      return <ReactPlayerEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
+      return (
+        <Suspense fallback={<div className="flex h-full w-full items-center justify-center text-sm text-white/60">Loading player...</div>}>
+          <ReactPlayerEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
+        </Suspense>
+      )
     }
     if (source.type === 'external') {
-      // External links don't have a loading state, they are instantly ready
-      setTimeout(commonProps.onReady, 0)
-      return <ExternalLinkEngine key={engineKey} url={source.url} />
+      // External links report ready from their component effect.
+      return <ExternalLinkEngine key={engineKey} url={source.url} onReady={commonProps.onReady} />
     }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
   }, [source, engineKey, incomingStream, outgoingStream, volume])
@@ -279,16 +283,16 @@ export default function VideoPlayer({
             aria-label="Video URL"
           />
         </div>
-        <button onClick={handleLoadClick} className="btn-primary shrink-0" aria-label="Load video">
+        <button type="button" onClick={handleLoadClick} disabled={isLoading || !urlInput.trim()} className="btn-primary shrink-0" aria-label="Load video">
           <Film className="h-4 w-4" />
           Load
         </button>
         {outgoingStream ? (
-          <button onClick={onStopScreenShare} className="btn-primary bg-marquee-coral/20 text-marquee-coral hover:bg-marquee-coral/30 shrink-0" aria-label="Stop Share">
+          <button type="button" onClick={onStopScreenShare} className="btn-secondary shrink-0 !text-marquee-coral" aria-label="Stop sharing screen">
             Stop Share
           </button>
         ) : (
-          <button onClick={onStartScreenShare} className="btn-primary bg-marquee-violet/20 text-marquee-violet hover:bg-marquee-violet/30 shrink-0" aria-label="Share Screen">
+          <button type="button" onClick={onStartScreenShare} className="btn-secondary shrink-0 !text-marquee-live" aria-label="Share screen">
             Share Screen
           </button>
         )}
@@ -300,7 +304,7 @@ export default function VideoPlayer({
             <button
               key={url}
               onClick={() => handlePickRecent(url)}
-              className="max-w-[160px] truncate rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-ink-muted transition-colors hover:bg-white/[0.08] hover:text-ink"
+              className="max-w-[160px] truncate rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1 text-xs text-ink-muted transition-colors hover:bg-white/[0.08] hover:text-ink"
               title={url}
             >
               {url.replace(/^https?:\/\//, '')}
@@ -310,7 +314,7 @@ export default function VideoPlayer({
       )}
 
       {loadError && (
-        <div className="rounded-xl border border-marquee-coral/30 bg-marquee-coral/10 px-3.5 py-2.5 text-sm text-marquee-coral">
+        <div className="rounded-lg border border-marquee-coral/30 bg-marquee-coral/10 px-3.5 py-2.5 text-sm text-marquee-coral">
           {loadError}
         </div>
       )}
@@ -318,7 +322,7 @@ export default function VideoPlayer({
       {/* Player surface */}
       <div
         ref={containerRef}
-        className={`group relative flex w-full items-center justify-center overflow-hidden rounded-2xl bg-black ${
+        className={`group relative flex w-full items-center justify-center overflow-hidden rounded-lg bg-black ${
           source?.type === 'external' ? 'min-h-[420px]' : 'aspect-video'
         } ${
           isFullscreen ? 'fixed inset-0 z-50 aspect-auto rounded-none' : ''
@@ -344,7 +348,7 @@ export default function VideoPlayer({
             {source.type === 'screenshare' && (
               <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
                 <div className="flex items-center gap-1.5">
-                  <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label="Mute">
+                  <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label={volume === 0 ? 'Unmute' : 'Mute'}>
                     <VolumeIcon className="h-4 w-4" />
                   </button>
                   <input
@@ -391,7 +395,9 @@ export default function VideoPlayer({
                   onChange={(e) => setSeekPreview(Number(e.target.value))}
                   onMouseUp={(e) => commitSeek(Number(e.target.value))}
                   onTouchEnd={(e) => commitSeek(Number(e.target.value))}
-                  onKeyUp={(e) => commitSeek(Number(e.target.value))}
+                  onKeyUp={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') commitSeek(Number(e.target.value))
+                  }}
                   className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
                   aria-label="Seek"
                 />
@@ -410,7 +416,7 @@ export default function VideoPlayer({
 
                   <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
                     <div className="hidden items-center gap-1.5 sm:flex">
-                      <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label="Mute">
+                      <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label={volume === 0 ? 'Unmute' : 'Mute'}>
                         <VolumeIcon className="h-4 w-4" />
                       </button>
                       <input

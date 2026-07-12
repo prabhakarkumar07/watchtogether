@@ -53,7 +53,7 @@ const VimeoEngine = forwardRef(function VimeoEngine(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId])
 
-  return <div ref={containerRef} className="h-full w-full overflow-hidden rounded-2xl bg-black [&_iframe]:h-full [&_iframe]:w-full" />
+  return <div ref={containerRef} className="h-full w-full overflow-hidden rounded-lg bg-black [&_iframe]:h-full [&_iframe]:w-full" />
 })
 
 export default VimeoEngine

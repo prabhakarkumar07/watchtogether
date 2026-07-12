@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Video } from 'lucide-react'
 import Header from './components/Header.jsx'
 import RoomPanel from './components/RoomPanel.jsx'
 import Participants from './components/Participants.jsx'
@@ -87,7 +87,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
       <Header 
         theme={theme} 
         onToggleTheme={toggleTheme}
@@ -95,7 +95,7 @@ export default function App() {
         setActiveLayout={setActiveLayout}
       />
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-4 p-3 sm:p-5 lg:flex-row">
         {/* Left column: room + participants + video call + (chat if sidebar mode) */}
         <div 
           className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 min-h-0 lg:overflow-y-auto [&::-webkit-scrollbar]:hidden pr-1 pb-4 ${
@@ -124,7 +124,7 @@ export default function App() {
                 <Participants participants={room.participants} selfId={room.selfId} />
               </div>
 
-              {/* Video Call panel — shown when a call is active */}
+              {/* Video call panel shown when a call is active */}
               {(room.localCallStream || room.remoteCallStreams.size > 0) && (
                 <VideoCall
                   localStream={room.localCallStream}
@@ -146,7 +146,8 @@ export default function App() {
                   className="btn-secondary w-full gap-2 text-sm"
                   aria-label="Start video call"
                 >
-                  📹 Start Video Call
+                  <Video className="h-4 w-4" />
+                  Start video call
                 </button>
               )}
             </>
@@ -233,8 +234,7 @@ export default function App() {
       </main>
 
       <footer className="px-6 py-4 text-center text-xs text-ink-faint">
-        Peer-to-peer &amp; serverless — your video and chat never touch a server.<br/>
-        Built by <a href="https://prabhakar-kumar.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-marquee-violet hover:underline">Prabhakar Kumar</a>
+        Peer-to-peer and serverless. Your room data stays on encrypted WebRTC channels. Built by <a href="https://prabhakar-kumar.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-300 transition-colors hover:text-blue-200 hover:underline">Prabhakar Kumar</a>.
       </footer>
     </div>
   )

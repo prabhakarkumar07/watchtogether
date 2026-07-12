@@ -9,13 +9,14 @@ export default defineConfig({
     // initial bundle stays small and loads fast.
     rollupOptions: {
       output: {
-        manualChunks: {
-          peerjs: ['peerjs'],
-          vimeo: ['@vimeo/player'],
+        manualChunks(id) {
+          if (id.includes('node_modules/peerjs')) return 'peerjs'
+          if (id.includes('node_modules/@vimeo/player')) return 'vimeo'
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) return 'react-vendor'
         },
       },
     },
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 900,
   },
   server: {
     port: 5173,

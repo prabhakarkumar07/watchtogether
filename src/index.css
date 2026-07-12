@@ -4,11 +4,12 @@
 
 @layer base {
   * {
-    @apply border-ink-faint/20;
+    @apply border-slate-800/70;
   }
 
   html {
     color-scheme: dark;
+    text-rendering: optimizeLegibility;
   }
 
   html.light {
@@ -16,98 +17,134 @@
   }
 
   body {
-    @apply font-body bg-void text-ink antialiased;
-    background-image: radial-gradient(120% 120% at 50% -10%, rgba(139, 92, 246, 0.16) 0%, rgba(10, 11, 16, 0) 55%);
-    background-attachment: fixed;
+    @apply bg-[#0b0d12] font-body text-slate-100 antialiased;
     min-height: 100vh;
   }
 
-  html.light body {
-    @apply bg-slate-100 text-slate-900;
-    background-image: radial-gradient(120% 120% at 50% -10%, rgba(139, 92, 246, 0.12) 0%, rgba(241, 245, 249, 0) 55%);
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.045), transparent 220px),
+      linear-gradient(90deg, rgba(59,130,246,0.08), transparent 28%, transparent 72%, rgba(16,185,129,0.06));
   }
 
-  /* Respect reduced-motion preferences everywhere */
+  html.light body {
+    @apply bg-[#f6f7fb] text-slate-950;
+  }
+
+  html.light body::before {
+    background:
+      linear-gradient(180deg, rgba(15,23,42,0.045), transparent 220px),
+      linear-gradient(90deg, rgba(37,99,235,0.06), transparent 32%, transparent 72%, rgba(5,150,105,0.05));
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  :focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
     }
   }
 
-  /* Visible keyboard focus ring for accessibility */
-  :focus-visible {
-    outline: 2px solid #8b5cf6;
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(139, 92, 246, 0.35);
+    background: rgba(100, 116, 139, 0.42);
+    border: 3px solid transparent;
     border-radius: 999px;
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.55);
+    background: rgba(148, 163, 184, 0.68);
+    border: 3px solid transparent;
+    background-clip: content-box;
   }
 }
 
 @layer components {
   .glass {
-    @apply bg-white/[0.05] backdrop-blur-xl border border-white/10 shadow-glass;
+    @apply border border-white/10 bg-[#11141c]/95 shadow-[0_18px_48px_rgba(0,0,0,0.28)];
   }
 
   html.light .glass {
-    @apply bg-white/60 border-black/5;
+    @apply border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)];
   }
 
   .glass-panel {
-    @apply glass rounded-2xl;
+    @apply glass rounded-lg;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-marquee-violet to-purple-700
-      px-4 py-2.5 font-semibold text-white shadow-glow transition-all duration-200
-      hover:brightness-110 hover:shadow-glow active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold
+      text-slate-950 shadow-sm transition duration-150 hover:bg-white active:scale-[0.98]
+      disabled:pointer-events-none disabled:opacity-45;
+  }
+
+  html.light .btn-primary {
+    @apply bg-slate-950 text-white hover:bg-slate-800;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl glass px-4 py-2.5 font-medium text-ink
-      transition-all duration-200 hover:bg-white/[0.09] active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none;
+    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.055]
+      px-4 py-2.5 text-sm font-medium text-slate-100 transition duration-150 hover:border-white/20 hover:bg-white/[0.09]
+      active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45;
   }
 
   html.light .btn-secondary {
-    @apply text-slate-800 hover:bg-white/80;
+    @apply border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50;
   }
 
   .btn-icon {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full glass transition-all duration-200
-      hover:bg-white/[0.12] active:scale-90;
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.055]
+      text-slate-200 transition duration-150 hover:border-white/20 hover:bg-white/[0.1] active:scale-95;
+  }
+
+  html.light .btn-icon {
+    @apply border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50;
   }
 
   .input-field {
-    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-ink
-      placeholder:text-ink-faint outline-none transition-colors duration-200 focus:border-marquee-violet/60 focus:bg-white/[0.07];
+    @apply w-full rounded-lg border border-white/10 bg-black/25 px-3.5 py-2.5 text-sm text-slate-100
+      outline-none transition duration-150 placeholder:text-slate-500 focus:border-blue-400/70 focus:bg-black/35;
   }
 
   html.light .input-field {
-    @apply border-black/10 bg-white/70 text-slate-900 placeholder:text-slate-400 focus:bg-white;
+    @apply border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white;
   }
 
-  /* Ticket-stub shaped chip for the room code, referencing a torn cinema ticket */
+  .status-pill {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] font-medium text-slate-300;
+  }
+
+  html.light .status-pill {
+    @apply border-slate-200 bg-slate-50 text-slate-600;
+  }
+
   .ticket-chip {
     position: relative;
-    -webkit-mask-image: var(--ticket-mask, none);
   }
 
   .ticket-chip::before,
@@ -115,36 +152,30 @@
     content: '';
     position: absolute;
     top: 50%;
-    width: 14px;
-    height: 14px;
-    background: theme('colors.void.DEFAULT');
+    width: 12px;
+    height: 12px;
+    background: #0b0d12;
     border-radius: 999px;
     transform: translateY(-50%);
   }
 
   html.light .ticket-chip::before,
   html.light .ticket-chip::after {
-    background: theme('colors.slate.100');
+    background: #f6f7fb;
   }
 
-  .ticket-chip::before {
-    left: -7px;
-  }
-  .ticket-chip::after {
-    right: -7px;
-  }
+  .ticket-chip::before { left: -6px; }
+  .ticket-chip::after { right: -6px; }
 
-  /* Cinema marquee bulb strip — the page's signature element */
   .marquee-strip {
     display: flex;
-    gap: 6px;
+    gap: 5px;
   }
+
   .marquee-strip span {
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
     border-radius: 999px;
-    background: theme('colors.marquee.amber');
-    box-shadow: 0 0 4px 1px rgba(255, 200, 87, 0.5);
-    animation: pulseBulb 2.4s ease-in-out infinite;
+    background: #22c55e;
   }
 }

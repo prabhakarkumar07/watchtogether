@@ -63,7 +63,7 @@ const YouTubeEngine = forwardRef(function YouTubeEngine(
   }, [videoId])
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl bg-black">
+    <div className="relative h-full w-full overflow-hidden rounded-lg bg-black">
       <div ref={containerRef} className="h-full w-full" />
       {/* Transparent overlay blocks YouTube's own click-to-play/pause so our
           unified control bar remains the single source of truth for input. */}

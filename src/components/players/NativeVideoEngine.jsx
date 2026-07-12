@@ -56,7 +56,7 @@ const NativeVideoEngine = forwardRef(function NativeVideoEngine(
     <video
       ref={videoRef}
       src={url}
-      className="h-full w-full rounded-2xl bg-black object-contain"
+      className="h-full w-full rounded-lg bg-black object-contain"
       playsInline
       controls={false}
     />

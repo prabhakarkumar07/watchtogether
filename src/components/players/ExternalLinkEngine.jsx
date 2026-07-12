@@ -1,9 +1,13 @@
-import { ExternalLink, Maximize, Minimize, AlertTriangle } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
+import { AlertTriangle, ExternalLink, Maximize, Minimize } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
-export default function ExternalLinkEngine({ url }) {
+export default function ExternalLinkEngine({ url, onReady }) {
   const containerRef = useRef(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
+
+  useEffect(() => {
+    onReady?.()
+  }, [onReady])
 
   useEffect(() => {
     const handler = () => setIsFullscreen(Boolean(document.fullscreenElement))
@@ -21,66 +25,51 @@ export default function ExternalLinkEngine({ url }) {
 
   let domain = 'this website'
   try {
-    domain = new URL(url).hostname.replace(/^www\./, '')
+    domain = new URL(url).hostname.replace(/^www./, '')
   } catch {
-    // ignore
+    // ignore invalid display URL; parsing is handled before this component renders
   }
 
   return (
-    <div ref={containerRef} className="absolute inset-0 flex flex-col bg-black rounded-2xl overflow-hidden">
-      
-      {/* Embedded Browser Toolbar */}
-      <div className="flex items-center justify-between bg-white/[0.04] border-b border-white/10 px-4 py-2 shrink-0">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <div className="flex gap-1.5 shrink-0">
-            <div className="w-3 h-3 rounded-full bg-marquee-coral/50" />
-            <div className="w-3 h-3 rounded-full bg-marquee-amber/50" />
-            <div className="w-3 h-3 rounded-full bg-marquee-green/50" />
+    <div ref={containerRef} className="absolute inset-0 flex flex-col overflow-hidden rounded-lg bg-black">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.04] px-3 py-2 sm:px-4">
+        <div className="flex min-w-0 items-center gap-3 overflow-hidden">
+          <div className="flex shrink-0 gap-1.5" aria-hidden="true">
+            <div className="h-3 w-3 rounded-full bg-marquee-coral/50" />
+            <div className="h-3 w-3 rounded-full bg-marquee-amber/50" />
+            <div className="h-3 w-3 rounded-full bg-marquee-live/50" />
           </div>
-          <div className="bg-black/40 border border-white/5 rounded-md px-3 py-1 text-xs text-white/50 truncate max-w-[200px] sm:max-w-[400px]">
+          <div className="max-w-[160px] truncate rounded-md border border-white/5 bg-black/40 px-3 py-1 text-xs text-white/60 sm:max-w-[400px]">
             {url}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-4">
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-marquee-violet/20 hover:bg-marquee-violet/30 text-marquee-violet text-xs font-medium transition-colors"
-            title="Open in New Tab (Use this if the site is blank!)"
-          >
-            <span>Open in New Tab</span>
+        <div className="ml-3 flex shrink-0 items-center gap-2">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-void transition-colors hover:bg-white/90" title="Open in a new tab">
+            <span className="hidden sm:inline">Open</span>
             <ExternalLink className="h-3 w-3" />
           </a>
-          
-          <button 
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 transition-colors"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          >
+          <button type="button" onClick={toggleFullscreen} className="rounded-lg p-1.5 text-white/70 transition-colors hover:bg-white/10" title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'} aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}>
             {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
           </button>
         </div>
       </div>
 
-      {/* Warning Banner */}
-      <div className="bg-marquee-amber/10 border-b border-marquee-amber/20 px-4 py-1.5 flex items-center justify-center gap-2 text-[11px] text-marquee-amber">
+      <div className="flex items-center justify-center gap-2 border-b border-marquee-amber/20 bg-marquee-amber/10 px-3 py-1.5 text-[11px] text-marquee-amber sm:px-4">
         <AlertTriangle className="h-3 w-3 shrink-0" />
-        <span className="truncate">If the area below is blank or shows an error, click "Open in New Tab". Sites like Netflix block embedded browsers.</span>
+        <span className="truncate">If the embed is blank, open {domain} in a new tab. Some services block embedded playback.</span>
       </div>
 
-      {/* Iframe Content */}
-      <div className="flex-1 relative bg-[#0a0a0a]">
+      <div className="relative flex-1 bg-[#0a0a0a]">
         <iframe
           src={url}
-          className="absolute inset-0 w-full h-full border-none"
+          className="absolute inset-0 h-full w-full border-none"
           allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-          title={`Embedded browser for ${domain}`}
+          referrerPolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-popups allow-forms"
+          title={'Embedded browser for ' + domain}
         />
       </div>
-
     </div>
   )
 }
