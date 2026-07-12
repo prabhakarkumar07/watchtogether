@@ -1,13 +1,13 @@
-import { Clapperboard, Moon, Sun, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen } from 'lucide-react'
+import { Clapperboard, Moon, Sun, Layout, Check } from 'lucide-react'
+import { useState } from 'react'
 
 export default function Header({ 
   theme, 
   onToggleTheme,
-  leftPanelOpen,
-  onToggleLeftPanel,
-  rightPanelOpen,
-  onToggleRightPanel
+  activeLayout,
+  setActiveLayout
 }) {
+  const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   return (
     <header className="glass sticky top-0 z-30 flex items-center justify-between gap-3 rounded-none border-x-0 border-t-0 px-4 py-3 sm:px-6">
       <div className="flex items-center gap-2.5">
@@ -27,14 +27,41 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          onClick={onToggleLeftPanel}
-          className="btn-icon hidden lg:flex"
-          aria-label={leftPanelOpen ? 'Hide left panel' : 'Show left panel'}
-          title={leftPanelOpen ? 'Hide left panel' : 'Show left panel'}
-        >
-          {leftPanelOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-        </button>
+        <div className="relative hidden lg:block">
+          <button
+            onClick={() => setShowLayoutMenu((v) => !v)}
+            className={`btn-icon ${showLayoutMenu ? 'bg-white/10' : ''}`}
+            aria-label="Change layout"
+            title="Change layout"
+          >
+            <Layout className="h-4 w-4" />
+          </button>
+          
+          {showLayoutMenu && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setShowLayoutMenu(false)} />
+              <div className="glass absolute right-0 top-full mt-2 z-50 flex w-40 flex-col overflow-hidden rounded-xl p-1 shadow-lg">
+                {[
+                  { id: 'classic', label: 'Classic View' },
+                  { id: 'theater', label: 'Theater Mode' },
+                  { id: 'focus', label: 'Focus Mode' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => {
+                      setActiveLayout(mode.id)
+                      setShowLayoutMenu(false)
+                    }}
+                    className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm transition-colors hover:bg-white/10 text-left ${activeLayout === mode.id ? 'text-marquee-amber font-medium' : 'text-white/90'}`}
+                  >
+                    {mode.label}
+                    {activeLayout === mode.id && <Check className="h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
 
         <button
           onClick={onToggleTheme}
@@ -43,15 +70,6 @@ export default function Header({
           title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
           {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
-
-        <button
-          onClick={onToggleRightPanel}
-          className="btn-icon hidden lg:flex"
-          aria-label={rightPanelOpen ? 'Hide right panel' : 'Show right panel'}
-          title={rightPanelOpen ? 'Hide right panel' : 'Show right panel'}
-        >
-          {rightPanelOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
         </button>
       </div>
     </header>

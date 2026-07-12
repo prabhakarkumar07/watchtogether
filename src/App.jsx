@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import Header from './components/Header.jsx'
 import RoomPanel from './components/RoomPanel.jsx'
@@ -25,11 +25,12 @@ export default function App() {
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const [savedVolume, setSavedVolume] = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed] = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
-  const [leftPanelOpen, setLeftPanelOpen] = useLocalStorage('leftPanelOpen', true)
-  const [rightPanelOpen, setRightPanelOpen] = useLocalStorage('rightPanelOpen', true)
+  const [activeLayout, setActiveLayout] = useLocalStorage('activeLayout', 'classic') // classic, theater, focus
 
   const [supported] = useState(isBrowserSupported)
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
+  
+  const autoJoinAttempted = useRef(false)
 
   const room = useRoom({ username, onToast: toast })
 
@@ -44,6 +45,16 @@ export default function App() {
       setLastRoom(room.roomCode)
     }
   }, [room.status, room.roomCode, setLastRoom])
+
+  useEffect(() => {
+    if (!autoJoinAttempted.current) {
+      autoJoinAttempted.current = true
+      const targetRoom = initialRoomFromUrl || lastRoom
+      if (targetRoom && room.status === 'idle') {
+        room.joinRoom(targetRoom)
+      }
+    }
+  }, [initialRoomFromUrl, lastRoom, room])
 
   const handleCopyLink = async () => {
     const link = `${window.location.origin}${window.location.pathname}?room=${room.roomCode}`
@@ -80,15 +91,13 @@ export default function App() {
       <Header 
         theme={theme} 
         onToggleTheme={toggleTheme}
-        leftPanelOpen={leftPanelOpen}
-        onToggleLeftPanel={() => setLeftPanelOpen(!leftPanelOpen)}
-        rightPanelOpen={rightPanelOpen}
-        onToggleRightPanel={() => setRightPanelOpen(!rightPanelOpen)}
+        activeLayout={activeLayout}
+        setActiveLayout={setActiveLayout}
       />
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
         {/* Left column: room + participants + video call */}
-        <div className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${!leftPanelOpen ? 'lg:hidden' : ''}`}>
+        <div className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${activeLayout !== 'classic' ? 'lg:hidden' : ''}`}>
           <RoomPanel
             username={username}
             onUsernameChange={setUsername}
@@ -97,7 +106,10 @@ export default function App() {
             initialJoinCode={initialRoomFromUrl}
             onCreateRoom={room.createRoom}
             onJoinRoom={room.joinRoom}
-            onLeaveRoom={room.leaveRoom}
+            onLeaveRoom={() => {
+              setLastRoom('')
+              room.leaveRoom()
+            }}
             onCopyLink={handleCopyLink}
           />
           {room.status === 'connected' && (
@@ -186,7 +198,7 @@ export default function App() {
         {/* Right column: chat (and participants on mobile) */}
         <div
           className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 ${
-            room.status === 'connected' && mobileTab === 'chat' ? 'flex' : (!rightPanelOpen ? 'hidden' : 'hidden lg:flex')
+            room.status === 'connected' && mobileTab === 'chat' ? 'flex' : (activeLayout === 'focus' ? 'hidden' : 'hidden lg:flex')
           }`}
           style={{ minHeight: room.status === 'connected' ? '24rem' : undefined }}
         >
@@ -207,7 +219,8 @@ export default function App() {
       </main>
 
       <footer className="px-6 py-4 text-center text-xs text-ink-faint">
-        Peer-to-peer &amp; serverless — your video and chat never touch a server.
+        Peer-to-peer &amp; serverless — your video and chat never touch a server.<br/>
+        Built by <a href="https://prabhakar-kumar.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-marquee-violet hover:underline">Prabhakar Kumar</a>
       </footer>
     </div>
   )

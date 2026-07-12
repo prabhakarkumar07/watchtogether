@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Copy, DoorOpen, LogOut, Ticket, User, Loader2 } from 'lucide-react'
 
 export default function RoomPanel({
@@ -13,8 +13,24 @@ export default function RoomPanel({
   onCopyLink,
 }) {
   const [joinCode, setJoinCode] = useState(initialJoinCode || '')
+  const [pendingAction, setPendingAction] = useState(null)
+  
   const connecting = status === 'connecting'
   const connected = status === 'connected'
+
+  useEffect(() => {
+    if (!connecting) setPendingAction(null)
+  }, [connecting])
+
+  const handleCreate = () => {
+    setPendingAction('create')
+    onCreateRoom()
+  }
+
+  const handleJoin = (code) => {
+    setPendingAction('join')
+    onJoinRoom(code)
+  }
 
   return (
     <div className="glass-panel flex flex-col gap-4 p-4 sm:p-5">
@@ -36,9 +52,9 @@ export default function RoomPanel({
             />
           </div>
 
-          <button onClick={onCreateRoom} disabled={connecting} className="btn-primary w-full">
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
-            Create Room
+          <button onClick={handleCreate} disabled={connecting} className="btn-primary w-full">
+            {connecting && pendingAction === 'create' ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
+            {connecting && pendingAction === 'create' ? 'Creating...' : 'Create Room'}
           </button>
 
           <div className="flex items-center gap-2 text-xs text-ink-faint">
@@ -52,7 +68,7 @@ export default function RoomPanel({
               type="text"
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && onJoinRoom(joinCode)}
+              onKeyDown={(e) => e.key === 'Enter' && handleJoin(joinCode)}
               placeholder="Room code"
               maxLength={8}
               className="input-field flex-1 font-mono uppercase tracking-widest"
@@ -60,11 +76,11 @@ export default function RoomPanel({
               disabled={connecting}
             />
             <button
-              onClick={() => onJoinRoom(joinCode)}
+              onClick={() => handleJoin(joinCode)}
               disabled={connecting}
               className="btn-secondary shrink-0"
             >
-              Join
+              {connecting && pendingAction === 'join' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Join'}
             </button>
           </div>
         </>
