@@ -21,7 +21,7 @@ export default function App() {
   const toast = useToast()
 
   const [username, setUsername] = useLocalStorage(STORAGE_KEYS.USERNAME, '')
-  const [, setLastRoom] = useLocalStorage(STORAGE_KEYS.LAST_ROOM, '')
+  const [lastRoom, setLastRoom] = useLocalStorage(STORAGE_KEYS.LAST_ROOM, '')
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const [savedVolume, setSavedVolume] = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed] = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
