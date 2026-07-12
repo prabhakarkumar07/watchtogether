@@ -66,7 +66,9 @@ export default function VideoPlayer({
   const pollRef = useRef(null)
 
   const source = videoState?.source || null
-  const engineKey = source ? `${source.type}-${source.id}` : 'empty'
+  const isScreenShare = source?.type === 'screenshare'
+  // Give screenshare a deterministic key that doesn't include `id` (which is undefined)
+  const engineKey = source ? (isScreenShare ? 'screenshare' : `${source.type}-${source.id}`) : 'empty'
 
   // ---------- load a new video ----------
 
@@ -98,8 +100,10 @@ export default function VideoPlayer({
     [onLoadVideo]
   )
 
+  // When source changes, show loading — except for screenshare which manages its own ready state
   useEffect(() => {
-    if (source) setIsLoading(true)
+    if (!source || isScreenShare) return
+    setIsLoading(true)
     setReady(false)
   }, [engineKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -241,11 +245,14 @@ export default function VideoPlayer({
       return <VimeoEngine key={engineKey} ref={engineRef} videoId={source.id} {...commonProps} />
     }
     if (source.type === 'screenshare') {
+      // Use whichever stream is available. Pass both so engine can switch if one appears later.
       const activeStream = outgoingStream || incomingStream
-      return <ScreenShareEngine key="screenshare" stream={activeStream} isLocal={!!outgoingStream} onReady={commonProps.onReady} />
+      // Key on the stream itself so it re-mounts the moment a real stream is available.
+      const streamKey = activeStream ? 'screenshare-live' : 'screenshare-waiting'
+      return <ScreenShareEngine key={streamKey} stream={activeStream} isLocal={!!outgoingStream} volume={volume} onReady={commonProps.onReady} />
     }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
-  }, [source, engineKey, incomingStream, outgoingStream])
+  }, [source, engineKey, incomingStream, outgoingStream, volume])
 
   return (
     <div className="glass-panel flex flex-1 flex-col gap-4 p-4 sm:p-5">
@@ -322,7 +329,46 @@ export default function VideoPlayer({
               </div>
             )}
 
-            {/* Custom control bar — identical across all three engines */}
+            {/* Screen share control bar — fullscreen + volume + stop */}
+            {source.type === 'screenshare' && (
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100">
+                <div className="flex items-center gap-1.5">
+                  <button onClick={toggleMute} className="btn-icon h-8 w-8 bg-white/10" aria-label="Mute">
+                    <VolumeIcon className="h-4 w-4" />
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={volume}
+                    onChange={(e) => setVolume(Number(e.target.value))}
+                    className="h-1.5 w-20 cursor-pointer appearance-none rounded-full bg-white/20 accent-marquee-violet"
+                    aria-label="Volume"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {outgoingStream && (
+                    <button
+                      onClick={onStopScreenShare}
+                      className="btn-icon h-8 w-fit gap-1 rounded-xl bg-marquee-coral/30 px-2 text-xs font-medium text-marquee-coral"
+                      aria-label="Stop sharing"
+                    >
+                      Stop Sharing
+                    </button>
+                  )}
+                  <button
+                    onClick={toggleFullscreen}
+                    className="btn-icon h-8 w-8 bg-white/10"
+                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                  >
+                    {isFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Regular video control bar */}
             {source.type !== 'screenshare' && (
               <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                 <input

@@ -476,29 +476,51 @@ export function useRoom({ username, onToast }) {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
       setOutgoingStream(stream)
-      
-      const selfId = isHost ? peerRef.current?.id : selfIdRef.current
-      
-      // Let everyone know we are switching to screenshare mode
-      loadVideo({ type: 'screenshare', sharerId: selfId })
-      
-      calledPeersRef.current.clear()
-      // Call every other participant to send them the stream
-      participants.forEach((p) => {
-        if (p.id !== selfId) {
-          peerRef.current.call(p.id, stream)
-          calledPeersRef.current.add(p.id)
-        }
-      })
 
-      // When user stops sharing via the browser's native UI (e.g. "Stop sharing" button)
+      // Always read the peer id directly from the ref — never from stale state
+      const selfId = peerRef.current?.id
+      if (!selfId) {
+        toast.error?.('Not connected to a room.')
+        stream.getTracks().forEach(t => t.stop())
+        setOutgoingStream(null)
+        return
+      }
+
+      // Step 1: Tell all peers we are entering screenshare mode via data channel
+      loadVideo({ type: 'screenshare', sharerId: selfId })
+
+      // Step 2: Wait briefly so peers process the video-change message and render
+      // the ScreenShareEngine before we send the media stream, preventing races
+      await new Promise(resolve => setTimeout(resolve, 400))
+
+      calledPeersRef.current.clear()
+      // Step 3: Call every peer with the media stream
+      for (const [peerId, conn] of connectionsRef.current.entries()) {
+        if (conn.open) {
+          peerRef.current.call(peerId, stream)
+          calledPeersRef.current.add(peerId)
+        }
+      }
+      // Also call the host if we are a guest
+      if (hostConnectionRef.current?.open) {
+        const hostPeerId = hostConnectionRef.current.peer
+        if (!calledPeersRef.current.has(hostPeerId)) {
+          peerRef.current.call(hostPeerId, stream)
+          calledPeersRef.current.add(hostPeerId)
+        }
+      }
+
+      // Stop sharing when user clicks browser's native "Stop sharing" button
       stream.getVideoTracks()[0].onended = () => {
         stopScreenShare()
       }
     } catch (err) {
-      toast.error?.('Could not start screen share.')
+      // User cancelled the picker — not an error
+      if (err.name !== 'NotAllowedError') {
+        toast.error?.('Could not start screen share.')
+      }
     }
-  }, [isHost, participants, loadVideo, toast, stopScreenShare])
+  }, [loadVideo, toast, stopScreenShare])
 
   // Automatically call any participants that join AFTER we started sharing
   useEffect(() => {
