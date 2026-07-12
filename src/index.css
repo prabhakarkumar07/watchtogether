@@ -144,6 +144,7 @@
     height: 5px;
     border-radius: 999px;
     background: theme('colors.marquee.amber');
+    box-shadow: 0 0 4px 1px rgba(255, 200, 87, 0.5);
     animation: pulseBulb 2.4s ease-in-out infinite;
   }
 }

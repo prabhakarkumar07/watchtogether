@@ -40,8 +40,8 @@ export default {
       },
       keyframes: {
         pulseBulb: {
-          '0%, 100%': { opacity: 1, boxShadow: '0 0 6px 2px rgba(255,200,87,0.7)' },
-          '50%': { opacity: 0.35, boxShadow: '0 0 2px 0 rgba(255,200,87,0.2)' },
+          '0%, 100%': { opacity: 1 },
+          '50%': { opacity: 0.35 },
         },
         floatIn: {
           '0%': { opacity: 0, transform: 'translateY(8px)' },
