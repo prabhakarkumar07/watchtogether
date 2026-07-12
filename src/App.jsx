@@ -96,8 +96,16 @@ export default function App() {
       />
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
-        {/* Left column: room + participants + video call */}
-        <div className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${activeLayout !== 'classic' ? 'lg:hidden' : ''}`}>
+        {/* Left column: room + participants + video call + (chat if overlay mode) */}
+        <div 
+          className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${
+            activeLayout === 'overlay' 
+              ? 'lg:absolute lg:left-6 lg:top-24 lg:bottom-6 lg:z-40 lg:w-[22rem] lg:overflow-y-auto [&::-webkit-scrollbar]:hidden'
+              : activeLayout !== 'classic' 
+                ? 'lg:hidden' 
+                : ''
+          }`}
+        >
           <RoomPanel
             username={username}
             onUsernameChange={setUsername}
@@ -144,6 +152,13 @@ export default function App() {
                 </button>
               )}
             </>
+          )}
+
+          {/* Render Chat in the left column ONLY during Overlay Mode */}
+          {room.status === 'connected' && activeLayout === 'overlay' && (
+            <div className="hidden lg:flex flex-col flex-1 min-h-[400px]">
+              <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
+            </div>
           )}
         </div>
 
@@ -198,7 +213,9 @@ export default function App() {
         {/* Right column: chat (and participants on mobile) */}
         <div
           className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 ${
-            room.status === 'connected' && mobileTab === 'chat' ? 'flex' : (activeLayout === 'focus' ? 'hidden' : 'hidden lg:flex')
+            room.status === 'connected' && mobileTab === 'chat' 
+              ? 'flex' 
+              : (activeLayout === 'focus' || activeLayout === 'overlay' ? 'hidden' : 'hidden lg:flex')
           }`}
           style={{ minHeight: room.status === 'connected' ? '24rem' : undefined }}
         >
