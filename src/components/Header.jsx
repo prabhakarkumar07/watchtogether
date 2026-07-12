@@ -45,6 +45,7 @@ export default function Header({
                   { id: 'classic', label: 'Classic View' },
                   { id: 'theater', label: 'Theater Mode' },
                   { id: 'focus', label: 'Focus Mode' },
+                  { id: 'overlay', label: 'Overlay Mode' },
                 ].map((mode) => (
                   <button
                     key={mode.id}
