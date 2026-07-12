@@ -463,6 +463,14 @@ export function useRoom({ username, onToast }) {
   const seek = useCallback((time) => dispatchControl('seek', { time }), [dispatchControl])
   const setSpeed = useCallback((rate, time) => dispatchControl('speed', { rate, time }), [dispatchControl])
 
+  const stopScreenShare = useCallback(() => {
+    if (outgoingStream) {
+      outgoingStream.getTracks().forEach((track) => track.stop())
+      setOutgoingStream(null)
+      loadVideo(null)
+    }
+  }, [outgoingStream, loadVideo])
+
   const startScreenShare = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
@@ -488,14 +496,6 @@ export function useRoom({ username, onToast }) {
       toast.error?.('Could not start screen share.')
     }
   }, [isHost, participants, loadVideo, toast, stopScreenShare])
-
-  const stopScreenShare = useCallback(() => {
-    if (outgoingStream) {
-      outgoingStream.getTracks().forEach((track) => track.stop())
-      setOutgoingStream(null)
-      loadVideo(null)
-    }
-  }, [outgoingStream, loadVideo])
 
   useEffect(() => () => leaveRoom(true), []) // eslint-disable-line react-hooks/exhaustive-deps
 
