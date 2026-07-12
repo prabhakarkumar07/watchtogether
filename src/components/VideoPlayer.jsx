@@ -378,7 +378,7 @@ export default function VideoPlayer({
             )}
 
             {/* Regular video control bar */}
-            {source.type !== 'screenshare' && (
+            {source.type !== 'screenshare' && source.type !== 'external' && (
               <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 pb-2.5 pt-8 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                 <input
                   type="range"
