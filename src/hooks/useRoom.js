@@ -33,6 +33,11 @@ export function useRoom({ username, onToast }) {
   const [videoState, setVideoState] = useState(initialVideoState())
   const [incomingStream, setIncomingStream] = useState(null)
   const [outgoingStream, setOutgoingStream] = useState(null)
+  // Video call state
+  const [localCallStream, setLocalCallStream] = useState(null)
+  const [remoteCallStreams, setRemoteCallStreams] = useState(new Map()) // peerId -> MediaStream
+  const [isMicOn, setIsMicOn] = useState(true)
+  const [isCamOn, setIsCamOn] = useState(true)
 
   const peerRef = useRef(null)
   const connectionsRef = useRef(new Map()) // guestPeerId -> DataConnection (host only)
@@ -41,6 +46,8 @@ export function useRoom({ username, onToast }) {
   const usernameRef = useRef(username)
   const heartbeatRef = useRef(null)
   const calledPeersRef = useRef(new Set())
+  const videoCallPeersRef = useRef(new Set()) // track who we've video-called
+  const localCallStreamRef = useRef(null) // always-current ref to avoid stale closures
   usernameRef.current = username
 
   // Kept in refs (not just state) so long-lived PeerJS event listeners always
@@ -142,6 +149,14 @@ export function useRoom({ username, onToast }) {
         outgoingStream.getTracks().forEach(t => t.stop())
         setOutgoingStream(null)
       }
+      // Stop video call streams
+      if (localCallStreamRef.current) {
+        localCallStreamRef.current.getTracks().forEach(t => t.stop())
+        localCallStreamRef.current = null
+        setLocalCallStream(null)
+      }
+      setRemoteCallStreams(new Map())
+      videoCallPeersRef.current.clear()
       if (!silent) toast.info?.('You left the room.')
     },
     [stopHeartbeat, toast, outgoingStream]
@@ -269,20 +284,46 @@ export function useRoom({ username, onToast }) {
 
   const setupCallListener = useCallback((peer) => {
     peer.on('call', (call) => {
-      // Answer the call without sending any stream back
-      call.answer()
-      
-      call.on('stream', (remoteStream) => {
-        setIncomingStream(remoteStream)
-      })
-      
-      call.on('close', () => {
-        setIncomingStream(null)
-      })
-      
-      call.on('error', () => {
-        setIncomingStream(null)
-      })
+      const callType = call.metadata?.type || 'screenshare'
+
+      if (callType === 'videocall') {
+        // Answer video calls with our local stream if we have one
+        call.answer(localCallStreamRef.current || undefined)
+
+        call.on('stream', (remoteStream) => {
+          setRemoteCallStreams((prev) => {
+            const next = new Map(prev)
+            next.set(call.peer, remoteStream)
+            return next
+          })
+        })
+
+        call.on('close', () => {
+          setRemoteCallStreams((prev) => {
+            const next = new Map(prev)
+            next.delete(call.peer)
+            return next
+          })
+        })
+
+        call.on('error', () => {
+          setRemoteCallStreams((prev) => {
+            const next = new Map(prev)
+            next.delete(call.peer)
+            return next
+          })
+        })
+      } else {
+        // Screen share call — answer without sending any stream back
+        call.answer()
+
+        call.on('stream', (remoteStream) => {
+          setIncomingStream(remoteStream)
+        })
+
+        call.on('close', () => setIncomingStream(null))
+        call.on('error', () => setIncomingStream(null))
+      }
     })
   }, [])
 
@@ -535,6 +576,85 @@ export function useRoom({ username, onToast }) {
     }
   }, [participants, outgoingStream, isHost])
 
+  // ---------- video call actions ----------
+
+  const startVideoCall = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      localCallStreamRef.current = stream
+      setLocalCallStream(stream)
+      setIsMicOn(true)
+      setIsCamOn(true)
+
+      videoCallPeersRef.current.clear()
+
+      // Call all connected peers with 'videocall' metadata so they know the type
+      for (const [peerId, conn] of connectionsRef.current.entries()) {
+        if (conn.open) {
+          peerRef.current.call(peerId, stream, { metadata: { type: 'videocall' } })
+          videoCallPeersRef.current.add(peerId)
+        }
+      }
+      // Also call host if we are a guest
+      if (hostConnectionRef.current?.open) {
+        const hostPeerId = hostConnectionRef.current.peer
+        if (!videoCallPeersRef.current.has(hostPeerId)) {
+          peerRef.current.call(hostPeerId, stream, { metadata: { type: 'videocall' } })
+          videoCallPeersRef.current.add(hostPeerId)
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'NotAllowedError') {
+        toast.error?.('Could not access camera/microphone.')
+      }
+    }
+  }, [toast])
+
+  const stopVideoCall = useCallback(() => {
+    if (localCallStreamRef.current) {
+      localCallStreamRef.current.getTracks().forEach((t) => t.stop())
+      localCallStreamRef.current = null
+      setLocalCallStream(null)
+    }
+    setRemoteCallStreams(new Map())
+    videoCallPeersRef.current.clear()
+  }, [])
+
+  const toggleMic = useCallback(() => {
+    const stream = localCallStreamRef.current
+    if (!stream) return
+    const audioTracks = stream.getAudioTracks()
+    const newState = !isMicOn
+    audioTracks.forEach((t) => { t.enabled = newState })
+    setIsMicOn(newState)
+  }, [isMicOn])
+
+  const toggleCam = useCallback(() => {
+    const stream = localCallStreamRef.current
+    if (!stream) return
+    const videoTracks = stream.getVideoTracks()
+    const newState = !isCamOn
+    videoTracks.forEach((t) => { t.enabled = newState })
+    setIsCamOn(newState)
+  }, [isCamOn])
+
+  // Automatically call any NEW participant that joins while a video call is active
+  useEffect(() => {
+    if (!localCallStreamRef.current || !peerRef.current) return
+    const selfPeerId = peerRef.current.id
+    const allPeerIds = [
+      ...connectionsRef.current.keys(),
+      hostConnectionRef.current?.open ? hostConnectionRef.current.peer : null,
+    ].filter(Boolean)
+
+    for (const peerId of allPeerIds) {
+      if (peerId !== selfPeerId && !videoCallPeersRef.current.has(peerId)) {
+        peerRef.current.call(peerId, localCallStreamRef.current, { metadata: { type: 'videocall' } })
+        videoCallPeersRef.current.add(peerId)
+      }
+    }
+  }, [participants])
+
   useEffect(() => () => leaveRoom(true), []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
@@ -558,5 +678,14 @@ export function useRoom({ username, onToast }) {
     stopScreenShare,
     incomingStream,
     outgoingStream,
+    // Video call
+    localCallStream,
+    remoteCallStreams,
+    isMicOn,
+    isCamOn,
+    startVideoCall,
+    stopVideoCall,
+    toggleMic,
+    toggleCam,
   }
 }

@@ -15,7 +15,8 @@ import NativeVideoEngine from './players/NativeVideoEngine.jsx'
 import YouTubeEngine from './players/YouTubeEngine.jsx'
 import VimeoEngine from './players/VimeoEngine.jsx'
 import ScreenShareEngine from './players/ScreenShareEngine.jsx'
-import { parseVideoUrl } from '../lib/videoParsers.js'
+import ReactPlayerEngine from './players/ReactPlayerEngine.jsx'
+import { parseVideoUrl, parseVideoUrlSync } from '../lib/videoParsers.js'
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const DRIFT_TOLERANCE_SECONDS = 1.5
@@ -73,6 +74,7 @@ export default function VideoPlayer({
   // ---------- load a new video ----------
 
   const handleLoadClick = useCallback(() => {
+    if (!urlInput.trim()) return
     const parsed = parseVideoUrl(urlInput)
     if (parsed.type === 'unsupported') {
       setLoadError(parsed.reason)
@@ -87,7 +89,7 @@ export default function VideoPlayer({
   const handlePickRecent = useCallback(
     (url) => {
       setUrlInput(url)
-      const parsed = parseVideoUrl(url)
+      const parsed = parseVideoUrlSync(url)
       if (parsed.type === 'unsupported') {
         setLoadError(parsed.reason)
         return
@@ -245,11 +247,12 @@ export default function VideoPlayer({
       return <VimeoEngine key={engineKey} ref={engineRef} videoId={source.id} {...commonProps} />
     }
     if (source.type === 'screenshare') {
-      // Use whichever stream is available. Pass both so engine can switch if one appears later.
       const activeStream = outgoingStream || incomingStream
-      // Key on the stream itself so it re-mounts the moment a real stream is available.
       const streamKey = activeStream ? 'screenshare-live' : 'screenshare-waiting'
       return <ScreenShareEngine key={streamKey} stream={activeStream} isLocal={!!outgoingStream} volume={volume} onReady={commonProps.onReady} />
+    }
+    if (source.type === 'universal') {
+      return <ReactPlayerEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
     }
     return <NativeVideoEngine key={engineKey} ref={engineRef} url={source.url} {...commonProps} />
   }, [source, engineKey, incomingStream, outgoingStream, volume])
@@ -265,7 +268,7 @@ export default function VideoPlayer({
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleLoadClick()}
-            placeholder="Paste a YouTube, Vimeo, or MP4/WebM link…"
+            placeholder="YouTube, Vimeo, Twitch, Dailymotion, MP4, M3U8 link…"
             className="input-field pl-9"
             aria-label="Video URL"
           />

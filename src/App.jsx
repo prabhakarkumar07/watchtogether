@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import RoomPanel from './components/RoomPanel.jsx'
 import Participants from './components/Participants.jsx'
 import VideoPlayer from './components/VideoPlayer.jsx'
+import VideoCall from './components/VideoCall.jsx'
 import Chat from './components/Chat.jsx'
 import { useTheme } from './hooks/useTheme.js'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
@@ -54,7 +55,7 @@ export default function App() {
 
   const handleLoadVideo = (parsed) => {
     room.loadVideo(parsed)
-    setRecentVideos(addRecentVideo(parsed.url))
+    if (parsed?.url) setRecentVideos(addRecentVideo(parsed.url))
   }
 
   if (!supported) {
@@ -77,7 +78,7 @@ export default function App() {
       <Header theme={theme} onToggleTheme={toggleTheme} />
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
-        {/* Left column: room + participants */}
+        {/* Left column: room + participants + video call */}
         <div className="flex flex-col gap-4 lg:w-72 lg:shrink-0">
           <RoomPanel
             username={username}
@@ -91,9 +92,37 @@ export default function App() {
             onCopyLink={handleCopyLink}
           />
           {room.status === 'connected' && (
-            <div className="hidden lg:block">
-              <Participants participants={room.participants} selfId={room.selfId} />
-            </div>
+            <>
+              <div className="hidden lg:block">
+                <Participants participants={room.participants} selfId={room.selfId} />
+              </div>
+
+              {/* Video Call panel — shown when a call is active */}
+              {(room.localCallStream || room.remoteCallStreams.size > 0) && (
+                <VideoCall
+                  localStream={room.localCallStream}
+                  remoteStreams={room.remoteCallStreams}
+                  participants={room.participants}
+                  selfId={room.selfId}
+                  isMicOn={room.isMicOn}
+                  isCamOn={room.isCamOn}
+                  onToggleMic={room.toggleMic}
+                  onToggleCam={room.toggleCam}
+                  onHangUp={room.stopVideoCall}
+                />
+              )}
+
+              {/* Start video call button (only when no call active) */}
+              {!room.localCallStream && (
+                <button
+                  onClick={room.startVideoCall}
+                  className="btn-secondary w-full gap-2 text-sm"
+                  aria-label="Start video call"
+                >
+                  📹 Start Video Call
+                </button>
+              )}
+            </>
           )}
         </div>
 
