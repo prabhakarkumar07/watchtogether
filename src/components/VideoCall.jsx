@@ -54,8 +54,7 @@ function VideoTile({ stream, label, muted = false, isLocal = false }) {
  *   5+        → 3 cols
  */
 function gridCols(total) {
-  if (total <= 1) return 'grid-cols-1'
-  if (total <= 2) return 'grid-cols-2'
+  if (total <= 2) return 'grid-cols-1'
   if (total <= 4) return 'grid-cols-2'
   return 'grid-cols-3'
 }

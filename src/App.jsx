@@ -87,7 +87,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-[100dvh] flex-col overflow-hidden">
       <Header 
         theme={theme} 
         onToggleTheme={toggleTheme}
@@ -95,13 +95,11 @@ export default function App() {
         setActiveLayout={setActiveLayout}
       />
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
+      <main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
         {/* Left column: room + participants + video call + (chat if sidebar mode) */}
         <div 
-          className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${
-            (activeLayout === 'sidebar' || activeLayout === 'overlay')
-              ? 'lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto [&::-webkit-scrollbar]:hidden'
-              : activeLayout !== 'classic' 
+          className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 min-h-0 lg:overflow-y-auto [&::-webkit-scrollbar]:hidden pr-1 pb-4 ${
+            activeLayout !== 'classic' && activeLayout !== 'sidebar' && activeLayout !== 'overlay'
                 ? 'lg:hidden' 
                 : ''
           }`}
@@ -212,12 +210,11 @@ export default function App() {
 
         {/* Right column: chat (and participants on mobile) */}
         <div
-          className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 ${
+          className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 pb-4 ${
             room.status === 'connected' && mobileTab === 'chat' 
               ? 'flex' 
               : (activeLayout === 'focus' || activeLayout === 'sidebar' || activeLayout === 'overlay' ? 'hidden' : 'hidden lg:flex')
           }`}
-          style={{ minHeight: room.status === 'connected' ? '24rem' : undefined }}
         >
           {room.status === 'connected' ? (
             <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
