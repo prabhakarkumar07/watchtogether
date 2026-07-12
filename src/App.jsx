@@ -25,6 +25,8 @@ export default function App() {
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const [savedVolume, setSavedVolume] = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed] = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
+  const [leftPanelOpen, setLeftPanelOpen] = useLocalStorage('leftPanelOpen', true)
+  const [rightPanelOpen, setRightPanelOpen] = useLocalStorage('rightPanelOpen', true)
 
   const [supported] = useState(isBrowserSupported)
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
@@ -75,11 +77,18 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header theme={theme} onToggleTheme={toggleTheme} />
+      <Header 
+        theme={theme} 
+        onToggleTheme={toggleTheme}
+        leftPanelOpen={leftPanelOpen}
+        onToggleLeftPanel={() => setLeftPanelOpen(!leftPanelOpen)}
+        rightPanelOpen={rightPanelOpen}
+        onToggleRightPanel={() => setRightPanelOpen(!rightPanelOpen)}
+      />
 
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-4 p-4 sm:p-6 lg:flex-row">
         {/* Left column: room + participants + video call */}
-        <div className="flex flex-col gap-4 lg:w-72 lg:shrink-0">
+        <div className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 ${!leftPanelOpen ? 'lg:hidden' : ''}`}>
           <RoomPanel
             username={username}
             onUsernameChange={setUsername}
@@ -177,7 +186,7 @@ export default function App() {
         {/* Right column: chat (and participants on mobile) */}
         <div
           className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 ${
-            room.status === 'connected' && mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
+            room.status === 'connected' && mobileTab === 'chat' ? 'flex' : (!rightPanelOpen ? 'hidden' : 'hidden lg:flex')
           }`}
           style={{ minHeight: room.status === 'connected' ? '24rem' : undefined }}
         >
