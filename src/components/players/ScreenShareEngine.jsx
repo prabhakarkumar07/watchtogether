@@ -10,9 +10,8 @@ export default function ScreenShareEngine({ stream, isLocal, onReady }) {
       videoRef.current.play().catch(err => {
         console.warn("Screen share autoplay blocked:", err)
       })
-      onReady?.()
     }
-  }, [stream, onReady])
+  }, [stream])
 
   return (
     <video
@@ -20,6 +19,7 @@ export default function ScreenShareEngine({ stream, isLocal, onReady }) {
       autoPlay
       playsInline
       muted={isLocal}
+      onLoadedMetadata={() => onReady?.()}
       className="h-full w-full object-contain"
     />
   )
