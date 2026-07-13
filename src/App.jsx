@@ -83,6 +83,8 @@ export default function App() {
   }
 
   const hasVideoCall = room.localCallStream || room.remoteCallStreams?.size > 0
+  const hasLocalCall = !!room.localCallStream
+  const canJoinCall = !hasLocalCall && room.remoteCallStreams?.size > 0
 
   // Derive layout booleans
   const showLeftSidebar  = activeLayout !== 'focus'
@@ -182,22 +184,38 @@ export default function App() {
                   onToggleMic={room.toggleMic}
                   onToggleCam={room.toggleCam}
                   onHangUp={room.stopVideoCall}
+                  canJoinCall={canJoinCall}
+                  onJoinCall={room.startVideoCall}
                 />
               )}
             </div>
 
-            {/* Start call button — pinned at bottom */}
-            {room.status === 'connected' && !hasVideoCall && (
-              <div className="p-3 border-t border-app-border shrink-0">
-                <button
-                  type="button"
-                  onClick={room.startVideoCall}
-                  className="btn-secondary w-full gap-2 text-xs"
-                  aria-label="Start video call"
-                >
-                  <Video className="h-3.5 w-3.5" />
-                  Start video call
-                </button>
+            {/* Start / join call button — pinned at bottom */}
+            {room.status === 'connected' && (
+              <div className="p-2 border-t border-app-border shrink-0">
+                {canJoinCall ? (
+                  /* Others are on a call — show a prominent JOIN button */
+                  <button
+                    type="button"
+                    onClick={room.startVideoCall}
+                    className="btn-primary w-full gap-1.5 text-[11px] h-7"
+                    aria-label="Join video call"
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    Join call
+                  </button>
+                ) : !hasLocalCall ? (
+                  /* No call active at all — start one */
+                  <button
+                    type="button"
+                    onClick={room.startVideoCall}
+                    className="btn-secondary w-full gap-1.5 text-[11px] h-7"
+                    aria-label="Start video call"
+                  >
+                    <Video className="h-3.5 w-3.5" />
+                    Start video call
+                  </button>
+                ) : null}
               </div>
             )}
 
