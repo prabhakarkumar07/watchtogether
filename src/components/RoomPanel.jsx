@@ -75,22 +75,22 @@ export default function RoomPanel({
   }
 
   return (
-    <div className="p-3 border-b border-app-border shrink-0">
-      <div className="mb-3">
-        <p className="text-xs font-semibold text-text-primary mb-0.5">Join a Watch Party</p>
-        <p className="text-2xs text-text-muted">Create or join a private synchronized room.</p>
+    <div className="p-2.5 border-b border-app-border shrink-0">
+      <div className="mb-2">
+        <p className="text-[11px] font-semibold text-text-primary mb-0.5">Join a Watch Party</p>
+        <p className="text-[10px] text-text-muted">Create or join a private synchronized room.</p>
       </div>
 
       {/* Username */}
-      <div className="mb-3">
+      <div className="mb-2">
         <label className="block mb-1">
-          <span className="text-2xs font-medium text-text-muted uppercase tracking-wide">
+          <span className="text-[10px] font-medium text-text-muted uppercase tracking-wide">
             Display name
           </span>
         </label>
         <div className="relative">
           <User
-            className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+            className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-text-muted"
           />
           <input
             type="text"
@@ -98,7 +98,7 @@ export default function RoomPanel({
             onChange={(e) => onUsernameChange(e.target.value)}
             placeholder="Your name"
             maxLength={24}
-            className="input-field pl-8"
+            className="input-field pl-7 h-7 text-[12px]"
             disabled={connecting}
             autoComplete="name"
           />
@@ -110,25 +110,25 @@ export default function RoomPanel({
         type="button"
         onClick={handleCreate}
         disabled={!canSubmit}
-        className="btn-primary w-full mb-3"
+        className="btn-primary w-full mb-2 h-7 text-[11px]"
         aria-label="Create room"
       >
         {connecting && pendingAction === 'create'
-          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          : <DoorOpen className="h-3.5 w-3.5" />
+          ? <Loader2 className="h-3 w-3 animate-spin" />
+          : <DoorOpen className="h-3 w-3" />
         }
         {connecting && pendingAction === 'create' ? 'Creating…' : 'Create room'}
       </button>
 
       {/* Divider */}
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-1.5 mb-2">
         <div className="h-px flex-1 bg-app-border" />
-        <span className="text-2xs text-text-muted">or join existing</span>
+        <span className="text-[10px] text-text-muted">or join existing</span>
         <div className="h-px flex-1 bg-app-border" />
       </div>
 
       {/* Join by code */}
-      <div className="flex gap-2">
+      <div className="flex gap-1.5">
         <input
           type="text"
           value={joinCode}
@@ -136,7 +136,7 @@ export default function RoomPanel({
           onKeyDown={(e) => e.key === 'Enter' && handleJoin(joinCode)}
           placeholder="ABC123"
           maxLength={8}
-          className="input-field flex-1 font-mono uppercase tracking-widest"
+          className="input-field flex-1 font-mono uppercase tracking-widest h-7 text-[12px]"
           aria-label="Room code"
           disabled={connecting}
           autoComplete="off"
@@ -146,11 +146,11 @@ export default function RoomPanel({
           type="button"
           onClick={() => handleJoin(joinCode)}
           disabled={!canSubmit || !joinCode.trim()}
-          className="btn-secondary shrink-0"
+          className="btn-secondary shrink-0 h-7 text-[11px] px-2.5"
           aria-label="Join room"
         >
           {connecting && pendingAction === 'join'
-            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ? <Loader2 className="h-3 w-3 animate-spin" />
             : 'Join'
           }
         </button>

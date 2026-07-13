@@ -11,6 +11,9 @@ import { useLocalStorage } from './hooks/useLocalStorage.js'
 import { useRoom } from './hooks/useRoom.js'
 import { useToast } from './context/ToastContext.jsx'
 import { STORAGE_KEYS, addRecentVideo } from './lib/storage.js'
+import { useResizablePanel } from './hooks/useResizablePanel.js'
+import EffectsOverlay from './components/EffectsOverlay.jsx'
+import EffectsPicker from './components/EffectsPicker.jsx'
 
 function isBrowserSupported() {
   return typeof window !== 'undefined' && !!window.RTCPeerConnection && !!window.localStorage
@@ -84,7 +87,23 @@ export default function App() {
   // Derive layout booleans
   const showLeftSidebar  = activeLayout !== 'focus'
   const showRightPanel   = activeLayout === 'classic'
-  const leftSidebarWide  = activeLayout === 'sidebar'
+
+  // Resizable panels
+  const leftPanel = useResizablePanel({
+    defaultWidth: 240,
+    minWidth: 180,
+    maxWidth: 400,
+    storageKey: 'leftSidebarWidth',
+    side: 'left',
+  })
+  
+  const rightPanel = useResizablePanel({
+    defaultWidth: 280,
+    minWidth: 220,
+    maxWidth: 450,
+    storageKey: 'rightPanelWidth',
+    side: 'right',
+  })
 
   if (!supported) {
     return (
@@ -101,7 +120,9 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <>
+      <EffectsOverlay />
+      <div className="flex h-full flex-col overflow-hidden">
 
       {/* ── Header ──────────────────────────────────────────────────── */}
       <Header
@@ -122,10 +143,8 @@ export default function App() {
         {/* ════ LEFT SIDEBAR ════════════════════════════════════════════ */}
         {showLeftSidebar && (
           <aside
-            className={`hidden lg:flex flex-col shrink-0 border-r border-app-border overflow-hidden transition-all duration-200 ${
-              leftSidebarWide ? 'w-80 xl:w-96' : 'w-60 xl:w-64'
-            }`}
-            style={{ backgroundColor: '#0C0D13' }}
+            className="hidden lg:flex flex-col shrink-0 border-r border-app-border relative overflow-visible"
+            style={{ backgroundColor: '#0C0D13', width: leftPanel.width }}
           >
             {/* Scrollable content area */}
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll">
@@ -181,6 +200,12 @@ export default function App() {
                 </button>
               </div>
             )}
+
+            {/* Resize handle */}
+            <div
+              className="absolute top-0 -right-1.5 bottom-0 w-3 cursor-col-resize hover:bg-white/10 z-10"
+              onMouseDown={leftPanel.startResizing}
+            />
           </aside>
         )}
 
@@ -221,6 +246,8 @@ export default function App() {
             room={room}
             username={username}
             mobileTab={mobileTab}
+            width={rightPanel.width}
+            onStartResizing={rightPanel.startResizing}
           />
         )}
       </main>
@@ -278,19 +305,31 @@ export default function App() {
           />
         </div>
       )}
+
+      {/* ════ CELEBRATION EFFECTS FAB ═════════════════════════════════ */}
+      {room.status === 'connected' && (
+        <EffectsPicker sendEffect={room.sendEffect} />
+      )}
     </div>
+    </>
   )
 }
 
 /* ── Right panel (chat + people tabs) ────────────────────────────────────── */
-function RightPanel({ room, username }) {
+function RightPanel({ room, username, width, onStartResizing }) {
   const [tab, setTab] = useState('chat')
 
   return (
     <aside
-      className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-l border-app-border overflow-hidden"
-      style={{ backgroundColor: '#0C0D13' }}
+      className="hidden lg:flex flex-col shrink-0 border-l border-app-border relative overflow-visible"
+      style={{ backgroundColor: '#0C0D13', width }}
     >
+      {/* Resize handle */}
+      <div
+        className="absolute top-0 -left-1.5 bottom-0 w-3 cursor-col-resize hover:bg-white/10 z-10"
+        onMouseDown={onStartResizing}
+      />
+      
       {/* Tab bar */}
       {room.status === 'connected' && (
         <div className="flex border-b border-app-border shrink-0">

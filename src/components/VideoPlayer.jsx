@@ -102,6 +102,10 @@ export default function VideoPlayer({
     if (!source || isScreenShare) return
     setIsLoading(true)
     setReady(false)
+    setLocalPlaying(false)
+    setLocalTime(0)
+    setLocalDuration(0)
+    setSeekPreview(null)
   }, [engineKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Polling ────────────────────────────────────────────────────────── */
@@ -243,22 +247,22 @@ export default function VideoPlayer({
     >
       {/* ── Toolbar (URL input) ─────────────────────────────────────────── */}
       <div
-        className="flex flex-col gap-2 px-3 py-2.5 border-b border-app-border shrink-0"
+        className="flex flex-col gap-1.5 px-2 py-1.5 border-b border-app-border shrink-0"
         style={{ backgroundColor: '#0C0D13' }}
       >
         <div className="flex gap-2">
           {/* URL input */}
           <div className="relative flex-1">
             <LinkIcon
-              className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+              className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-text-muted"
             />
             <input
               type="text"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLoadClick()}
-              placeholder="YouTube, Vimeo, MP4, M3U8 or any video link…"
-              className="input-field pl-8 h-8"
+              placeholder="YouTube, Vimeo, MP4, M3U8…"
+              className="input-field pl-7 h-7 text-[12px]"
               aria-label="Video URL"
             />
           </div>
@@ -268,10 +272,10 @@ export default function VideoPlayer({
             type="button"
             onClick={handleLoadClick}
             disabled={isLoading || !urlInput.trim()}
-            className="btn-primary h-8 shrink-0 gap-1.5"
+            className="btn-primary h-7 shrink-0 gap-1 text-[11px]"
             aria-label="Load video"
           >
-            <Film className="h-3.5 w-3.5" />
+            <Film className="h-3 w-3" />
             Load
           </button>
 
@@ -280,21 +284,21 @@ export default function VideoPlayer({
             <button
               type="button"
               onClick={onStopScreenShare}
-              className="btn-icon h-8 w-auto px-2.5 gap-1.5 text-xs"
+              className="btn-icon h-7 w-auto px-2 gap-1 text-[11px]"
               style={{ color: '#FCA5A5', backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }}
               aria-label="Stop sharing screen"
             >
-              <MonitorOff className="h-3.5 w-3.5" />
+              <MonitorOff className="h-3 w-3" />
               <span className="hidden sm:inline">Stop</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={onStartScreenShare}
-              className="btn-secondary h-8 w-auto px-2.5 gap-1.5 text-xs"
+              className="btn-secondary h-7 w-auto px-2 gap-1 text-[11px]"
               aria-label="Share screen"
             >
-              <Monitor className="h-3.5 w-3.5" />
+              <Monitor className="h-3 w-3" />
               <span className="hidden sm:inline">Share</span>
             </button>
           )}

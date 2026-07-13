@@ -1,3 +1,4 @@
+import React, { useState } from 'react'
 import { Crown, Mic, MicOff, Users, Video, VideoOff } from 'lucide-react'
 
 const AVATAR_PALETTE = [
@@ -33,7 +34,42 @@ function Avatar({ id, name, size = 28 }) {
   )
 }
 
+const ParticipantItem = React.memo(function ParticipantItem({ p, selfId }) {
+  return (
+    <li
+      className="group flex items-center gap-2 rounded px-1.5 py-1 transition-colors"
+      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#161820'}
+      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
+    >
+      <Avatar id={p.id} name={p.name} size={22} />
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[11px] font-medium text-text-primary">
+          {p.name}
+          {p.id === selfId && (
+            <span className="ml-1 text-text-muted font-normal">(you)</span>
+          )}
+        </span>
+      </span>
+
+      <div className="flex items-center gap-1">
+        {p.isHost && (
+          <span title="Room host">
+            <Crown className="h-3 w-3 text-accent-amber" />
+          </span>
+        )}
+      </div>
+    </li>
+  )
+})
+
 export default function Participants({ participants, selfId }) {
+  const [showAll, setShowAll] = useState(false)
+  
+  const MAX_VISIBLE = 20
+  const displayedParticipants = showAll ? participants : participants.slice(0, MAX_VISIBLE)
+  const hiddenCount = participants.length - displayedParticipants.length
+
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* Header */}
@@ -49,42 +85,26 @@ export default function Participants({ participants, selfId }) {
       </div>
 
       {/* List */}
-      <ul className="flex flex-col gap-0.5 p-2 overflow-y-auto sidebar-scroll flex-1">
+      <ul className="flex flex-col p-1.5 overflow-y-auto sidebar-scroll flex-1">
         {participants.length === 0 && (
-          <li className="py-4 text-center text-xs text-text-muted">
+          <li className="py-3 text-center text-[11px] text-text-muted">
             No one here yet.
           </li>
         )}
-        {participants.map((p) => (
-          <li
-            key={p.id}
-            className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors"
-            style={{ ':hover': { backgroundColor: '#161820' } }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#161820'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-          >
-            <Avatar id={p.id} name={p.name} size={28} />
-
-            {/* Name */}
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-medium text-text-primary">
-                {p.name}
-                {p.id === selfId && (
-                  <span className="ml-1.5 text-text-muted font-normal">(you)</span>
-                )}
-              </span>
-            </span>
-
-            {/* Status icons */}
-            <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-              {p.isHost && (
-                <span title="Room host">
-                  <Crown className="h-3 w-3 text-accent-amber" />
-                </span>
-              )}
-            </div>
-          </li>
+        {displayedParticipants.map((p) => (
+          <ParticipantItem key={p.id} p={p} selfId={selfId} />
         ))}
+        {!showAll && hiddenCount > 0 && (
+          <li className="mt-2 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="text-[11px] font-medium text-accent-blue hover:text-blue-400"
+            >
+              Show {hiddenCount} more
+            </button>
+          </li>
+        )}
       </ul>
     </div>
   )

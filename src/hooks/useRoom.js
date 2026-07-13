@@ -59,6 +59,13 @@ export function useRoom({ username, onToast }) {
   const [remoteCallStreams, setRemoteCallStreams] = useState(new Map()) // peerId -> MediaStream
   const [isMicOn, setIsMicOn] = useState(true)
   const [isCamOn, setIsCamOn] = useState(true)
+  const isMicOnRef = useRef(true)
+  const isCamOnRef = useRef(true)
+  const isLeavingRef = useRef(false)
+
+  // Sync state to refs
+  useEffect(() => { isMicOnRef.current = isMicOn }, [isMicOn])
+  useEffect(() => { isCamOnRef.current = isCamOn }, [isCamOn])
 
   const peerRef = useRef(null)
   const connectionsRef = useRef(new Map())     // peerId -> DataConnection (host holds all; guests hold none)
@@ -146,6 +153,14 @@ export function useRoom({ username, onToast }) {
     }
   }, [secureSend])
 
+  const broadcastParticipantsRef = useRef(null)
+  const broadcastParticipants = useCallback((list) => {
+    if (broadcastParticipantsRef.current) clearTimeout(broadcastParticipantsRef.current)
+    broadcastParticipantsRef.current = setTimeout(() => {
+      broadcast({ type: 'participants', list })
+    }, 300)
+  }, [broadcast])
+
   const sendToHost = useCallback(async (payload) => {
     await secureSend(hostConnectionRef.current, payload)
   }, [secureSend])
@@ -169,6 +184,7 @@ export function useRoom({ username, onToast }) {
 
   const leaveRoom = useCallback(
     (silent = false) => {
+      isLeavingRef.current = true
       stopHeartbeat()
       for (const conn of connectionsRef.current.values()) {
         try { conn.close() } catch { /* may already be closed */ }
@@ -257,15 +273,22 @@ export function useRoom({ username, onToast }) {
       conn.on('close', () => {
         const name = cleanDisplayText(conn.metadata?.name, 'A guest')
         connectionsRef.current.delete(conn.peer)
-        // Also clean up their video call stream
+        // Also clean up their video call stream and screen share
         setRemoteCallStreams((prev) => {
           const next = new Map(prev)
           next.delete(conn.peer)
           return next
         })
+        const shareCall = screenShareCallsRef.current.get(conn.peer)
+        if (shareCall) {
+          try { shareCall.close() } catch {}
+          screenShareCallsRef.current.delete(conn.peer)
+        }
+        calledPeersRef.current.delete(conn.peer)
+
         const list = buildParticipantList(usernameRef.current)
         setParticipants(list)
-        broadcast({ type: 'participants', list })
+        broadcastParticipants(list)
         const sysMsg = { id: nanoid(8), system: true, text: `${name} left the room.`, timestamp: Date.now() }
         addMessage(sysMsg)
         broadcast({ type: 'system', message: sysMsg })
@@ -318,6 +341,11 @@ export function useRoom({ username, onToast }) {
             broadcast({ type: 'control', action: data.action, payload: data.payload })
             break
           }
+          case 'effect': {
+            window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId }))
+            broadcast({ type: 'effect', effectId: data.effectId }, connection.peer)
+            break
+          }
           default:
             break
         }
@@ -333,8 +361,12 @@ export function useRoom({ username, onToast }) {
       const callType = call.metadata?.type || 'screenshare'
 
       if (callType === 'videocall') {
-        // Answer with our local camera stream if we have one (enables 2-way video)
-        call.answer(localCallStreamRef.current || undefined)
+        // Answer with our local call stream if we have one.
+        // If we don't have one yet, answer with null so the call is
+        // established — the caller will see our avatar placeholder.
+        // When the local user clicks "Join call" and gets a stream,
+        // callAllPeers() will create a new outgoing call to that peer.
+        call.answer(localCallStreamRef.current || null)
 
         videoMediaCallsRef.current.set(call.peer, call)
         call.on('stream', (remoteStream) => {
@@ -390,6 +422,7 @@ export function useRoom({ username, onToast }) {
       toast.error?.('Enter a username first.')
       return
     }
+    isLeavingRef.current = false
     setStatus('connecting')
 
     let attempts = 0
@@ -412,6 +445,7 @@ export function useRoom({ username, onToast }) {
       peer.on('open', () => {
         setRoomCode(code)
         setIsHost(true)
+        selfIdRef.current = peer.id
         setStatus('connected')
         setParticipants([{ id: peer.id, name: usernameRef.current, isHost: true }])
         toast.success?.(`Room ${code} created with end-to-end encrypted controls.`)
@@ -442,7 +476,7 @@ export function useRoom({ username, onToast }) {
         toast.error?.(describePeerError(err))
       })
 
-      peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect() })
+      peer.on('disconnected', () => { if (!peer.destroyed && !isLeavingRef.current) peer.reconnect() })
     }
 
     attemptCreate()
@@ -513,7 +547,9 @@ export function useRoom({ username, onToast }) {
         toast.error?.(describePeerError(err))
       })
 
-      peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect() })
+      peer.on('disconnected', () => { 
+        if (!peer.destroyed && !isLeavingRef.current) peer.reconnect() 
+      })
 
       function handleHostData(data) {
         switch (data.type) {
@@ -535,6 +571,9 @@ export function useRoom({ username, onToast }) {
             break
           case 'control':
             applyControlAction(data.action, data.payload)
+            break
+          case 'effect':
+            window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId }))
             break
           default:
             break
@@ -569,6 +608,20 @@ export function useRoom({ username, onToast }) {
       }
     },
     [applyControlAction, broadcast, isHost, sendToHost]
+  )
+
+  const sendEffect = useCallback(
+    (effectId) => {
+      // Optimistically show effect locally
+      window.dispatchEvent(new CustomEvent('room-effect', { detail: effectId }))
+      
+      if (isHost) {
+        broadcast({ type: 'effect', effectId })
+      } else {
+        sendToHost({ type: 'effect', effectId })
+      }
+    },
+    [isHost, broadcast, sendToHost]
   )
 
   const loadVideo = useCallback((source) => dispatchControl('video-change', { source }), [dispatchControl])
@@ -648,9 +701,15 @@ export function useRoom({ username, onToast }) {
   const callAllPeers = useCallback((stream) => {
     const selfId = peerRef.current?.id
     if (!selfId || !stream) return
+    let callCount = videoCallPeersRef.current.size
+    const MAX_VIDEO_CALL_PEERS = 8
+
     for (const participant of participantsRef.current) {
+      if (callCount >= MAX_VIDEO_CALL_PEERS) break
       const peerId = participant.id
       if (!peerId || peerId === selfId || videoCallPeersRef.current.has(peerId)) continue
+      
+      callCount++
       const call = peerRef.current.call(peerId, stream, { metadata: { type: 'videocall' } })
       videoMediaCallsRef.current.set(peerId, call)
       const cleanup = () => {
@@ -721,18 +780,18 @@ export function useRoom({ username, onToast }) {
   const toggleMic = useCallback(() => {
     const stream = localCallStreamRef.current
     if (!stream) return
-    const newState = !isMicOn
+    const newState = !isMicOnRef.current
     stream.getAudioTracks().forEach((t) => { t.enabled = newState })
     setIsMicOn(newState)
-  }, [isMicOn])
+  }, [])
 
   const toggleCam = useCallback(() => {
     const stream = localCallStreamRef.current
     if (!stream) return
-    const newState = !isCamOn
+    const newState = !isCamOnRef.current
     stream.getVideoTracks().forEach((t) => { t.enabled = newState })
     setIsCamOn(newState)
-  }, [isCamOn])
+  }, [])
 
   // Auto-call any new participant that joins while a video call is active
   useEffect(() => {
@@ -749,7 +808,7 @@ export function useRoom({ username, onToast }) {
     participants,
     messages,
     videoState,
-    selfId: isHost ? peerRef.current?.id : selfIdRef.current,
+    selfId: selfIdRef.current,
     createRoom,
     joinRoom,
     leaveRoom,
@@ -769,6 +828,7 @@ export function useRoom({ username, onToast }) {
     isCamOn,
     startVideoCall,
     stopVideoCall,
+    sendEffect,
     toggleMic,
     toggleCam,
   }

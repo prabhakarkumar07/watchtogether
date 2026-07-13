@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Send, Smile } from 'lucide-react'
 
 const QUICK_EMOJI = ['😀', '😂', '😍', '👍', '🎉', '🍿', '😮', '😢', '🔥', '❤️', '😅', '👏']
@@ -35,12 +35,80 @@ function colorFor(name = '') {
   return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
 }
 
+const ChatMessage = React.memo(function ChatMessage({ m, selfName }) {
+  if (m.system) {
+    return (
+      <p className="animate-float-in text-center text-[11px] text-text-muted py-0.5">
+        {m.text}
+      </p>
+    )
+  }
+
+  const isSelf  = m.sender === selfName
+  const color   = colorFor(m.sender)
+
+  return (
+    <div
+      className={`animate-float-in flex gap-2 ${isSelf ? 'flex-row-reverse' : 'flex-row'} ${
+        m.grouped ? 'mt-0.5' : 'mt-2.5'
+      }`}
+    >
+      {/* Avatar — only shown on first in a group */}
+      {!m.grouped ? (
+        <div
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold self-start mt-0.5"
+          style={{ backgroundColor: color.bg, color: color.text }}
+          aria-hidden="true"
+        >
+          {m.sender?.slice(0, 1).toUpperCase() || '?'}
+        </div>
+      ) : (
+        <div className="w-6 shrink-0" aria-hidden="true" />
+      )}
+
+      <div className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
+        {/* Sender + time — only shown on first in a group */}
+        {!m.grouped && (
+          <div className="flex items-baseline gap-1.5 mb-0.5 px-0.5">
+            <span className="text-[11px] font-semibold text-text-secondary">
+              {m.sender}
+            </span>
+            <time
+              className="font-mono text-[10px] text-text-muted"
+              dateTime={new Date(m.timestamp).toISOString()}
+            >
+              {formatClock(m.timestamp)}
+            </time>
+          </div>
+        )}
+
+        {/* Bubble */}
+        <div
+          className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
+          style={
+            isSelf
+              ? { backgroundColor: '#1D4ED8', color: '#EFF6FF' }
+              : { backgroundColor: '#161820', color: '#D4D6E4', border: '1px solid #2A2D3A' }
+          }
+        >
+          {m.text}
+        </div>
+      </div>
+    </div>
+  )
+})
+
 export default function Chat({ messages, onSend, selfName }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const scrollRef = useRef(null)
   const inputRef  = useRef(null)
-  const groupedMessages = useMemo(() => groupMessages(messages), [messages])
+  
+  const MAX_VISIBLE_MESSAGES = 80
+  const groupedMessages = useMemo(() => {
+    const grouped = groupMessages(messages)
+    return grouped.slice(-MAX_VISIBLE_MESSAGES)
+  }, [messages])
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -87,72 +155,9 @@ export default function Chat({ messages, onSend, selfName }) {
           </div>
         )}
 
-        {groupedMessages.map((m) => {
-          if (m.system) {
-            return (
-              <p
-                key={m.id}
-                className="animate-float-in text-center text-[11px] text-text-muted py-0.5"
-              >
-                {m.text}
-              </p>
-            )
-          }
-
-          const isSelf  = m.sender === selfName
-          const color   = colorFor(m.sender)
-
-          return (
-            <div
-              key={m.id}
-              className={`animate-float-in flex gap-2 ${isSelf ? 'flex-row-reverse' : 'flex-row'} ${
-                m.grouped ? 'mt-0.5' : 'mt-2.5'
-              }`}
-            >
-              {/* Avatar — only shown on first in a group */}
-              {!m.grouped ? (
-                <div
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold self-start mt-0.5"
-                  style={{ backgroundColor: color.bg, color: color.text }}
-                  aria-hidden="true"
-                >
-                  {m.sender?.slice(0, 1).toUpperCase() || '?'}
-                </div>
-              ) : (
-                <div className="w-6 shrink-0" aria-hidden="true" />
-              )}
-
-              <div className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
-                {/* Sender + time — only shown on first in a group */}
-                {!m.grouped && (
-                  <div className="flex items-baseline gap-1.5 mb-0.5 px-0.5">
-                    <span className="text-[11px] font-semibold text-text-secondary">
-                      {m.sender}
-                    </span>
-                    <time
-                      className="font-mono text-[10px] text-text-muted"
-                      dateTime={new Date(m.timestamp).toISOString()}
-                    >
-                      {formatClock(m.timestamp)}
-                    </time>
-                  </div>
-                )}
-
-                {/* Bubble */}
-                <div
-                  className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
-                  style={
-                    isSelf
-                      ? { backgroundColor: '#1D4ED8', color: '#EFF6FF' }
-                      : { backgroundColor: '#161820', color: '#D4D6E4', border: '1px solid #2A2D3A' }
-                  }
-                >
-                  {m.text}
-                </div>
-              </div>
-            </div>
-          )
-        })}
+        {groupedMessages.map((m) => (
+          <ChatMessage key={m.id} m={m} selfName={selfName} />
+        ))}
       </div>
 
       {/* Input area */}
