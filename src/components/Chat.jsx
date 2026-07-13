@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MessageCircle, Send, Smile } from 'lucide-react'
+import { Send, Smile } from 'lucide-react'
 
-const QUICK_EMOJI = ['\u{1F600}', '\u{1F602}', '\u{1F60D}', '\u{1F44D}', '\u{1F389}', '\u{1F37F}', '\u{1F62E}', '\u{1F622}', '\u{1F525}', '\u{2764}\u{FE0F}', '\u{1F605}', '\u{1F44F}']
+const QUICK_EMOJI = ['😀', '😂', '😍', '👍', '🎉', '🍿', '😮', '😢', '🔥', '❤️', '😅', '👏']
 const MAX_MESSAGE_LENGTH = 500
 
 function formatClock(timestamp) {
@@ -21,17 +21,32 @@ function groupMessages(messages) {
   })
 }
 
+const AVATAR_PALETTE = [
+  { bg: '#2D1B69', text: '#A78BFA' },
+  { bg: '#1A3A2A', text: '#4ADE80' },
+  { bg: '#3B1A1A', text: '#FCA5A5' },
+  { bg: '#1A2D3B', text: '#60A5FA' },
+  { bg: '#2D2B1A', text: '#FCD34D' },
+]
+
+function colorFor(name = '') {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0
+  return AVATAR_PALETTE[hash % AVATAR_PALETTE.length]
+}
+
 export default function Chat({ messages, onSend, selfName }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const scrollRef = useRef(null)
+  const inputRef  = useRef(null)
   const groupedMessages = useMemo(() => groupMessages(messages), [messages])
 
   useEffect(() => {
     const scroller = scrollRef.current
     if (!scroller) return
     const distanceFromBottom = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight
-    if (distanceFromBottom < 180) {
+    if (distanceFromBottom < 200) {
       scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' })
     }
   }, [messages])
@@ -42,61 +57,116 @@ export default function Chat({ messages, onSend, selfName }) {
     onSend(trimmed)
     setText('')
     setShowEmoji(false)
+    inputRef.current?.focus()
   }
 
   const remaining = MAX_MESSAGE_LENGTH - text.length
 
   return (
-    <section className="glass-panel flex min-h-0 flex-1 flex-col p-4 sm:p-5" aria-label="Room chat">
-      <div className="mb-3 flex items-center gap-2">
-        <MessageCircle className="h-4 w-4 text-marquee-live" aria-hidden="true" />
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-ink-muted">Chat</h2>
-        <span className="ml-auto rounded-md border border-white/10 px-2 py-0.5 text-xs text-ink-faint">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden" aria-label="Room chat">
+      {/* Header */}
+      <div className="section-header">
+        <span>Chat</span>
+        <span
+          className="ml-auto font-mono text-[10px] rounded px-1.5 py-0.5"
+          style={{ backgroundColor: '#161820', color: '#545769' }}
+        >
           {messages.length}
         </span>
       </div>
 
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto pr-1">
+      {/* Messages */}
+      <div
+        ref={scrollRef}
+        className="flex flex-1 min-h-0 flex-col overflow-y-auto p-3 gap-1"
+      >
         {messages.length === 0 && (
-          <div className="mt-6 rounded-lg border border-dashed border-white/10 px-4 py-5 text-center text-sm text-ink-faint">
-            No messages yet. Say hi when everyone is settled in.
+          <div className="mt-8 text-center">
+            <p className="text-xs text-text-muted">No messages yet.</p>
+            <p className="text-[11px] text-text-muted opacity-60 mt-1">Say hi! 👋</p>
           </div>
         )}
-        {groupedMessages.map((m) =>
-          m.system ? (
-            <p key={m.id} className="animate-float-in text-center text-xs italic text-ink-faint">
-              {m.text}
-            </p>
-          ) : (
-            <div key={m.id} className={
-              'animate-float-in flex flex-col ' + (m.sender === selfName ? 'items-end' : 'items-start')
-            }>
-              {!m.grouped && (
-                <div className="flex items-baseline gap-2 px-1">
-                  <span className="text-xs font-semibold text-ink-muted">{m.sender}</span>
-                  <time className="font-mono text-[10px] text-ink-faint" dateTime={new Date(m.timestamp).toISOString()}>
-                    {formatClock(m.timestamp)}
-                  </time>
-                </div>
-              )}
+
+        {groupedMessages.map((m) => {
+          if (m.system) {
+            return (
               <p
-                className={
-                  'mt-0.5 max-w-[85%] break-words rounded-lg px-3.5 py-2 text-sm leading-relaxed ' +
-                  (m.sender === selfName
-                    ? 'bg-white text-void shadow-sm'
-                    : 'border border-white/10 bg-white/[0.04] text-ink')
-                }
+                key={m.id}
+                className="animate-float-in text-center text-[11px] text-text-muted py-0.5"
               >
                 {m.text}
               </p>
+            )
+          }
+
+          const isSelf  = m.sender === selfName
+          const color   = colorFor(m.sender)
+
+          return (
+            <div
+              key={m.id}
+              className={`animate-float-in flex gap-2 ${isSelf ? 'flex-row-reverse' : 'flex-row'} ${
+                m.grouped ? 'mt-0.5' : 'mt-2.5'
+              }`}
+            >
+              {/* Avatar — only shown on first in a group */}
+              {!m.grouped ? (
+                <div
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[10px] font-bold self-start mt-0.5"
+                  style={{ backgroundColor: color.bg, color: color.text }}
+                  aria-hidden="true"
+                >
+                  {m.sender?.slice(0, 1).toUpperCase() || '?'}
+                </div>
+              ) : (
+                <div className="w-6 shrink-0" aria-hidden="true" />
+              )}
+
+              <div className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} min-w-0 flex-1`}>
+                {/* Sender + time — only shown on first in a group */}
+                {!m.grouped && (
+                  <div className="flex items-baseline gap-1.5 mb-0.5 px-0.5">
+                    <span className="text-[11px] font-semibold text-text-secondary">
+                      {m.sender}
+                    </span>
+                    <time
+                      className="font-mono text-[10px] text-text-muted"
+                      dateTime={new Date(m.timestamp).toISOString()}
+                    >
+                      {formatClock(m.timestamp)}
+                    </time>
+                  </div>
+                )}
+
+                {/* Bubble */}
+                <div
+                  className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
+                  style={
+                    isSelf
+                      ? { backgroundColor: '#1D4ED8', color: '#EFF6FF' }
+                      : { backgroundColor: '#161820', color: '#D4D6E4', border: '1px solid #2A2D3A' }
+                  }
+                >
+                  {m.text}
+                </div>
+              </div>
             </div>
           )
-        )}
+        })}
       </div>
 
-      <div className="relative mt-3 flex items-center gap-2">
+      {/* Input area */}
+      <div
+        className="p-2.5 border-t border-app-border shrink-0"
+        style={{ backgroundColor: '#0C0D13' }}
+      >
+        {/* Emoji picker */}
         {showEmoji && (
-          <div className="glass absolute bottom-12 left-0 z-10 grid grid-cols-6 gap-1 rounded-lg p-2" role="menu">
+          <div
+            className="panel-elevated mb-2 grid grid-cols-6 gap-0.5 p-2 rounded-lg"
+            role="menu"
+            aria-label="Quick emoji"
+          >
             {QUICK_EMOJI.map((emoji) => (
               <button
                 key={emoji}
@@ -104,42 +174,66 @@ export default function Chat({ messages, onSend, selfName }) {
                 onClick={() => {
                   setText((t) => (t + emoji).slice(0, MAX_MESSAGE_LENGTH))
                   setShowEmoji(false)
+                  inputRef.current?.focus()
                 }}
-                className="rounded-md p-1.5 text-lg transition-colors hover:bg-white/10"
-                aria-label={'Insert ' + emoji}
+                className="rounded-md p-1.5 text-base transition-colors hover:bg-app-hover"
+                aria-label={`Insert ${emoji}`}
               >
                 {emoji}
               </button>
             ))}
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => setShowEmoji((v) => !v)}
-          className="btn-icon shrink-0"
-          aria-label="Insert emoji"
-          aria-expanded={showEmoji}
-        >
-          <Smile className="h-4 w-4" />
-        </button>
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
-            maxLength={MAX_MESSAGE_LENGTH}
-            className="input-field pr-12"
-            aria-label="Chat message"
-          />
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[10px] text-ink-faint">
-            {remaining}
-          </span>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setShowEmoji((v) => !v)}
+            className="btn-icon h-8 w-8 shrink-0"
+            aria-label="Insert emoji"
+            aria-expanded={showEmoji}
+          >
+            <Smile className="h-3.5 w-3.5" />
+          </button>
+
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="Message…"
+              maxLength={MAX_MESSAGE_LENGTH}
+              className="input-field h-8"
+              aria-label="Chat message"
+            />
+            {text.length > MAX_MESSAGE_LENGTH * 0.8 && (
+              <span
+                className={`pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[10px] ${
+                  remaining < 50 ? 'text-status-error' : 'text-text-muted'
+                }`}
+              >
+                {remaining}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!text.trim()}
+            className="btn-icon h-8 w-8 shrink-0"
+            style={
+              text.trim()
+                ? { backgroundColor: '#1D4ED8', color: '#ffffff', borderColor: '#2563EB' }
+                : {}
+            }
+            aria-label="Send message"
+          >
+            <Send className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <button type="button" onClick={handleSend} disabled={!text.trim()} className="btn-icon shrink-0" aria-label="Send message">
-          <Send className="h-4 w-4" />
-        </button>
       </div>
     </section>
   )

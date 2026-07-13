@@ -1,15 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  BASE                                                                       */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 @layer base {
-  * {
-    @apply border-slate-800/70;
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    border-color: #232530;
   }
 
   html {
     color-scheme: dark;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    height: 100%;
   }
 
   html.light {
@@ -17,165 +29,335 @@
   }
 
   body {
-    @apply bg-[#0b0d12] font-body text-slate-100 antialiased;
-    min-height: 100vh;
-  }
-
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.045), transparent 220px),
-      linear-gradient(90deg, rgba(59,130,246,0.08), transparent 28%, transparent 72%, rgba(16,185,129,0.06));
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Prevent full-page scroll */
+    background-color: #090A0F;
+    color: #E8E9F0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
   }
 
   html.light body {
-    @apply bg-[#f6f7fb] text-slate-950;
+    background-color: #F4F5F7;
+    color: #0F1117;
   }
 
-  html.light body::before {
-    background:
-      linear-gradient(180deg, rgba(15,23,42,0.045), transparent 220px),
-      linear-gradient(90deg, rgba(37,99,235,0.06), transparent 32%, transparent 72%, rgba(5,150,105,0.05));
+  #root {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  button,
-  input,
-  textarea,
-  select {
+  button, input, textarea, select {
     font: inherit;
   }
 
   :focus-visible {
-    outline: 2px solid #60a5fa;
+    outline: 2px solid #3B82F6;
     outline-offset: 2px;
+    border-radius: 4px;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      scroll-behavior: auto !important;
-      transition-duration: 0.01ms !important;
-    }
-  }
-
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(100, 116, 139, 0.42);
-    border: 3px solid transparent;
+    background: rgba(255,255,255,0.08);
     border-radius: 999px;
-    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(148, 163, 184, 0.68);
-    border: 3px solid transparent;
-    background-clip: content-box;
+    background: rgba(255,255,255,0.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  COMPONENTS                                                                  */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 @layer components {
-  .glass {
-    @apply border border-white/10 bg-[#11141c]/95 shadow-[0_18px_48px_rgba(0,0,0,0.28)];
+
+  /* Panel — solid surface card used throughout the app */
+  .panel {
+    background-color: #0F1117;
+    border: 1px solid #232530;
+    border-radius: 8px;
   }
 
-  html.light .glass {
-    @apply border-slate-200 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)];
+  html.light .panel {
+    background-color: #ffffff;
+    border-color: #E2E4EA;
   }
 
-  .glass-panel {
-    @apply glass rounded-lg;
+  /* Elevated panel — for dropdowns, modals */
+  .panel-elevated {
+    background-color: #161820;
+    border: 1px solid #2A2D3A;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
   }
 
+  html.light .panel-elevated {
+    background-color: #ffffff;
+    border-color: #D1D5DB;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  }
+
+  /* ─── BUTTONS ─────────────────────────────────────────────────────────── */
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 font-medium rounded-md
+           transition-all duration-150 select-none cursor-pointer
+           disabled:opacity-40 disabled:pointer-events-none;
+    font-size: 13px;
+    height: 32px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  /* Primary — white fill on dark */
   .btn-primary {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold
-      text-slate-950 shadow-sm transition duration-150 hover:bg-white active:scale-[0.98]
-      disabled:pointer-events-none disabled:opacity-45;
+    @apply btn;
+    background-color: #E8E9F0;
+    color: #090A0F;
+    border: 1px solid transparent;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: #ffffff;
   }
 
   html.light .btn-primary {
-    @apply bg-slate-950 text-white hover:bg-slate-800;
+    background-color: #0F1117;
+    color: #E8E9F0;
+  }
+  html.light .btn-primary:hover:not(:disabled) {
+    background-color: #1C1E28;
   }
 
+  /* Secondary — subtle filled */
   .btn-secondary {
-    @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.055]
-      px-4 py-2.5 text-sm font-medium text-slate-100 transition duration-150 hover:border-white/20 hover:bg-white/[0.09]
-      active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45;
+    @apply btn;
+    background-color: #1C1E28;
+    color: #C4C6D6;
+    border: 1px solid #2A2D3A;
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: #22253200;
+    border-color: #3A3D4D;
+    color: #E8E9F0;
+    background-color: #222532;
   }
 
   html.light .btn-secondary {
-    @apply border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50;
+    background-color: #F4F5F7;
+    color: #374151;
+    border-color: #D1D5DB;
+  }
+  html.light .btn-secondary:hover:not(:disabled) {
+    background-color: #E5E7EB;
   }
 
+  /* Ghost */
+  .btn-ghost {
+    @apply btn;
+    background-color: transparent;
+    color: #8B8FA8;
+    border: 1px solid transparent;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: #1C1E28;
+    color: #E8E9F0;
+    border-color: #2A2D3A;
+  }
+
+  /* Danger */
+  .btn-danger {
+    @apply btn;
+    background-color: rgba(239, 68, 68, 0.12);
+    color: #FCA5A5;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+
+  /* Icon button */
   .btn-icon {
-    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.055]
-      text-slate-200 transition duration-150 hover:border-white/20 hover:bg-white/[0.1] active:scale-95;
+    @apply btn;
+    width: 32px;
+    padding: 0;
+    flex-shrink: 0;
+    background-color: #1C1E28;
+    color: #8B8FA8;
+    border: 1px solid #2A2D3A;
+  }
+  .btn-icon:hover:not(:disabled) {
+    background-color: #222532;
+    color: #E8E9F0;
+    border-color: #3A3D4D;
   }
 
   html.light .btn-icon {
-    @apply border-slate-200 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50;
+    background-color: #F4F5F7;
+    color: #6B7280;
+    border-color: #D1D5DB;
+  }
+  html.light .btn-icon:hover:not(:disabled) {
+    background-color: #E5E7EB;
+    color: #111827;
   }
 
+  /* ─── INPUTS ──────────────────────────────────────────────────────────── */
+
   .input-field {
-    @apply w-full rounded-lg border border-white/10 bg-black/25 px-3.5 py-2.5 text-sm text-slate-100
-      outline-none transition duration-150 placeholder:text-slate-500 focus:border-blue-400/70 focus:bg-black/35;
+    width: 100%;
+    height: 34px;
+    padding: 0 12px;
+    background-color: #0F1117;
+    border: 1px solid #2A2D3A;
+    border-radius: 6px;
+    color: #E8E9F0;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s, background-color 0.15s;
+  }
+  .input-field::placeholder {
+    color: #4A4D62;
+  }
+  .input-field:focus {
+    border-color: #3B82F6;
+    background-color: #090A0F;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+  }
+  .input-field:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   html.light .input-field {
-    @apply border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white;
+    background-color: #ffffff;
+    border-color: #D1D5DB;
+    color: #111827;
   }
+  html.light .input-field:focus {
+    border-color: #3B82F6;
+    background-color: #ffffff;
+  }
+
+  /* ─── STATUS BADGES ───────────────────────────────────────────────────── */
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 18px;
+    white-space: nowrap;
+  }
+
+  .badge-green  { background-color: rgba(34,197,94,0.12);  color: #4ADE80; border: 1px solid rgba(34,197,94,0.2); }
+  .badge-amber  { background-color: rgba(245,158,11,0.12); color: #FCD34D; border: 1px solid rgba(245,158,11,0.2); }
+  .badge-red    { background-color: rgba(239,68,68,0.12);  color: #FCA5A5; border: 1px solid rgba(239,68,68,0.2); }
+  .badge-muted  { background-color: rgba(255,255,255,0.04); color: #8B8FA8; border: 1px solid #2A2D3A; }
+  .badge-blue   { background-color: rgba(59,130,246,0.12); color: #93C5FD; border: 1px solid rgba(59,130,246,0.2); }
+
+  /* ─── DIVIDER ─────────────────────────────────────────────────────────── */
+
+  .divider {
+    height: 1px;
+    background-color: #1E2030;
+  }
+
+  /* ─── SPEAKING RING ───────────────────────────────────────────────────── */
+
+  .ring-speaking {
+    box-shadow: 0 0 0 2px #22C55E;
+  }
+
+  /* ─── VIDEO TILE ──────────────────────────────────────────────────────── */
+
+  .video-tile {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background-color: #090A0F;
+    border: 1px solid #232530;
+  }
+
+  .video-tile-pinned {
+    border-color: #3B82F6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  }
+
+  /* ─── SECTION HEADER ──────────────────────────────────────────────────── */
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #1E2030;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #545769;
+    flex-shrink: 0;
+  }
+
+  /* ─── LEGACY COMPAT ───────────────────────────────────────────────────── */
+
+  /* Keep .glass-panel as alias for .panel for any components not yet updated */
+  .glass-panel { @apply panel; }
+  .glass       { @apply panel; }
 
   .status-pill {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-[11px] font-medium text-slate-300;
+    @apply badge badge-muted;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  UTILITIES                                                                   */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .scrollbar-hidden {
+    scrollbar-width: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
   }
 
-  html.light .status-pill {
-    @apply border-slate-200 bg-slate-50 text-slate-600;
+  .sidebar-scroll {
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
-  .ticket-chip {
-    position: relative;
-  }
-
-  .ticket-chip::before,
-  .ticket-chip::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    width: 12px;
-    height: 12px;
-    background: #0b0d12;
-    border-radius: 999px;
-    transform: translateY(-50%);
-  }
-
-  html.light .ticket-chip::before,
-  html.light .ticket-chip::after {
-    background: #f6f7fb;
-  }
-
-  .ticket-chip::before { left: -6px; }
-  .ticket-chip::after { right: -6px; }
-
-  .marquee-strip {
-    display: flex;
-    gap: 5px;
-  }
-
-  .marquee-strip span {
-    width: 4px;
-    height: 4px;
-    border-radius: 999px;
-    background: #22c55e;
+  /* Animate float-in — used in Chat */
+  .animate-float-in {
+    animation: slideUp 0.2s ease-out;
   }
 }

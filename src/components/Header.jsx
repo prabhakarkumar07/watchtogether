@@ -1,100 +1,169 @@
-import { Check, Clapperboard, Layout, Moon, Sun } from 'lucide-react'
+import { Clapperboard, Check, Copy, Moon, Sun, Wifi } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-const LAYOUTS = [
-  { id: 'classic', label: 'Classic', hint: 'Balanced room, video, and chat' },
-  { id: 'theater', label: 'Theater', hint: 'Prioritize the shared player' },
-  { id: 'focus', label: 'Focus', hint: 'Minimal controls for watching' },
-  { id: 'sidebar', label: 'Sidebar', hint: 'Chat beside room controls' },
-]
+export default function Header({
+  theme,
+  onToggleTheme,
+  roomStatus,
+  roomCode,
+  onCopyLink,
+  onLeaveRoom,
+  activeLayout,
+  setActiveLayout,
+  layouts = [],
+}) {
+  const connected  = roomStatus === 'connected'
+  const connecting = roomStatus === 'connecting'
 
-export default function Header({ theme, onToggleTheme, activeLayout, setActiveLayout }) {
   const [showLayoutMenu, setShowLayoutMenu] = useState(false)
   const menuRef = useRef(null)
 
+  // Close layout menu on outside click or Escape
   useEffect(() => {
-    if (!showLayoutMenu) return undefined
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setShowLayoutMenu(false)
-    }
-    const onPointerDown = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) setShowLayoutMenu(false)
-    }
-    document.addEventListener('keydown', onKeyDown)
-    document.addEventListener('pointerdown', onPointerDown)
+    if (!showLayoutMenu) return
+    const onKey = (e) => { if (e.key === 'Escape') setShowLayoutMenu(false) }
+    const onPtr = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setShowLayoutMenu(false) }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPtr)
     return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('pointerdown', onPointerDown)
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPtr)
     }
   }, [showLayoutMenu])
 
-  const currentLayout = LAYOUTS.find((layout) => layout.id === activeLayout) || LAYOUTS[0]
+  const currentLayout = layouts.find((l) => l.id === activeLayout) || layouts[0]
 
   return (
-    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0b0d12]/88 px-4 py-3 backdrop-blur-xl sm:px-6">
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-slate-950 shadow-sm" aria-hidden="true">
-            <Clapperboard className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="truncate text-base font-semibold tracking-tight text-slate-50 sm:text-lg">Watch Together</h1>
-            <p className="hidden text-xs text-slate-500 sm:block">Private rooms for synchronized watching</p>
-          </div>
+    <header
+      className="flex h-12 shrink-0 items-center justify-between gap-3 px-4 border-b border-app-border z-30"
+      style={{ backgroundColor: '#0C0D13' }}
+    >
+      {/* ── Brand ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-md shrink-0"
+          style={{ backgroundColor: '#E8E9F0' }}
+          aria-hidden="true"
+        >
+          <Clapperboard className="h-4 w-4" style={{ color: '#090A0F' }} />
         </div>
+        <span className="text-sm font-semibold text-text-primary tracking-tight hidden sm:block">
+          Watch Together
+        </span>
+      </div>
 
-        <div className="flex items-center gap-2">
+      {/* ── Center — room status chip ──────────────────────────────────── */}
+      <div className="flex items-center gap-2">
+        {connected && roomCode && (
+          <div className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5 text-xs text-text-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-status-online" />
+              Connected
+            </span>
+            <button
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 group transition-colors"
+              style={{ backgroundColor: '#161820', border: '1px solid #2A2D3A' }}
+              onClick={onCopyLink}
+              title="Click to copy room link"
+              aria-label="Copy room link"
+            >
+              <span className="font-mono text-xs font-semibold tracking-[0.2em] text-text-primary">
+                {roomCode}
+              </span>
+              <Copy className="h-3 w-3 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
+          </div>
+        )}
+        {connecting && (
+          <span className="flex items-center gap-1.5 text-xs text-accent-amber">
+            <Wifi className="h-3.5 w-3.5 animate-pulse" />
+            Connecting…
+          </span>
+        )}
+      </div>
+
+      {/* ── Actions ───────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1.5 shrink-0">
+
+        {/* Layout switcher */}
+        {layouts.length > 0 && (
           <div className="relative hidden lg:block" ref={menuRef}>
             <button
               type="button"
               onClick={() => setShowLayoutMenu((v) => !v)}
-              className="btn-secondary h-9 min-h-9 px-3"
+              className="btn-ghost h-8 px-2.5 gap-1.5 text-xs"
               aria-label="Change layout"
-              aria-haspopup="menu"
+              aria-haspopup="true"
               aria-expanded={showLayoutMenu}
               title="Change layout"
             >
-              <Layout className="h-4 w-4" />
-              <span>{currentLayout.label}</span>
+              {currentLayout?.Icon && <currentLayout.Icon className="h-3.5 w-3.5" />}
+              <span className="hidden xl:inline">{currentLayout?.label}</span>
             </button>
 
             {showLayoutMenu && (
-              <div className="glass absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-lg p-1 shadow-lg" role="menu">
-                {LAYOUTS.map((mode) => (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={activeLayout === mode.id}
-                    onClick={() => {
-                      setActiveLayout(mode.id)
-                      setShowLayoutMenu(false)
-                    }}
-                    className="flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition-colors hover:bg-white/[0.07]"
-                  >
-                    <span className="mt-0.5 flex h-4 w-4 items-center justify-center rounded border border-white/15">
-                      {activeLayout === mode.id && <Check className="h-3 w-3 text-blue-300" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-slate-100">{mode.label}</span>
-                      <span className="block text-xs text-slate-500">{mode.hint}</span>
-                    </span>
-                  </button>
-                ))}
+              <div
+                className="panel-elevated absolute right-0 top-full z-50 mt-1.5 w-52 overflow-hidden rounded-lg p-1"
+                role="menu"
+                aria-label="Layout options"
+              >
+                {layouts.map((layout) => {
+                  const Icon = layout.Icon
+                  return (
+                    <button
+                      key={layout.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={activeLayout === layout.id}
+                      onClick={() => { setActiveLayout(layout.id); setShowLayoutMenu(false) }}
+                      className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left transition-colors hover:bg-app-hover"
+                    >
+                      <Icon
+                        className="h-4 w-4 shrink-0"
+                        style={{ color: activeLayout === layout.id ? '#3B82F6' : '#545769' }}
+                      />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-xs font-medium text-text-primary">{layout.label}</span>
+                        <span className="block text-[11px] text-text-muted">{layout.hint}</span>
+                      </span>
+                      {activeLayout === layout.id && (
+                        <Check className="h-3.5 w-3.5 text-accent-blue shrink-0" />
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
+        )}
 
+        {/* Leave */}
+        {connected && (
           <button
             type="button"
-            onClick={onToggleTheme}
-            className="btn-icon"
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={onLeaveRoom}
+            className="btn-ghost h-8 px-2.5 text-xs gap-1.5"
+            style={{ color: '#FCA5A5' }}
+            aria-label="Leave room"
+            title="Leave room"
           >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <span className="hidden sm:inline">Leave</span>
           </button>
-        </div>
+        )}
+
+        {/* Theme */}
+        <button
+          type="button"
+          onClick={onToggleTheme}
+          className="btn-icon h-8 w-8"
+          aria-label={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        >
+          {theme === 'dark'
+            ? <Sun  className="h-3.5 w-3.5" />
+            : <Moon className="h-3.5 w-3.5" />
+          }
+        </button>
       </div>
     </header>
   )

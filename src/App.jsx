@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { AlertTriangle, Video } from 'lucide-react'
+import { AlertTriangle, Layout, Monitor, Sidebar, Square, Video } from 'lucide-react'
 import Header from './components/Header.jsx'
 import RoomPanel from './components/RoomPanel.jsx'
 import Participants from './components/Participants.jsx'
@@ -16,43 +16,51 @@ function isBrowserSupported() {
   return typeof window !== 'undefined' && !!window.RTCPeerConnection && !!window.localStorage
 }
 
+/*
+ * Layouts:
+ *  classic  — left sidebar + center video + right chat
+ *  theater  — left sidebar (narrow) + center video (wider, no right panel)
+ *  focus    — center video only (no sidebars at all)
+ *  sidebar  — left sidebar + center video (right panel hidden, left wider)
+ */
+const LAYOUTS = [
+  { id: 'classic', label: 'Classic',  Icon: Layout,  hint: 'Sidebar · Video · Chat'   },
+  { id: 'theater', label: 'Theater',  Icon: Monitor,  hint: 'Sidebar · Max video'       },
+  { id: 'focus',   label: 'Focus',    Icon: Square,   hint: 'Video only'                 },
+  { id: 'sidebar', label: 'Sidebar',  Icon: Sidebar,  hint: 'Wide sidebar · Video'       },
+]
+
 export default function App() {
   const { theme, toggleTheme } = useTheme()
   const toast = useToast()
 
-  const [username, setUsername] = useLocalStorage(STORAGE_KEYS.USERNAME, '')
-  const [lastRoom, setLastRoom] = useLocalStorage(STORAGE_KEYS.LAST_ROOM, '')
+  const [username, setUsername]         = useLocalStorage(STORAGE_KEYS.USERNAME, '')
+  const [lastRoom, setLastRoom]         = useLocalStorage(STORAGE_KEYS.LAST_ROOM, '')
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
-  const [savedVolume, setSavedVolume] = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
-  const [savedSpeed, setSavedSpeed] = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
-  const [activeLayout, setActiveLayout] = useLocalStorage('activeLayout', 'classic') // classic, theater, focus
+  const [savedVolume, setSavedVolume]   = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
+  const [savedSpeed, setSavedSpeed]     = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
+  const [activeLayout, setActiveLayout] = useLocalStorage('activeLayout', 'classic')
 
-  const [supported] = useState(isBrowserSupported)
+  const [supported]  = useState(isBrowserSupported)
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
-  
-  const autoJoinAttempted = useRef(false)
 
+  const autoJoinAttempted = useRef(false)
   const room = useRoom({ username, onToast: toast })
 
-  // Prefill the join code from a shared link like ?room=ABC123, without auto-joining.
   const initialRoomFromUrl = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
     return params.get('room') || ''
   }, [])
 
   useEffect(() => {
-    if (room.status === 'connected' && room.roomCode) {
-      setLastRoom(room.roomCode)
-    }
+    if (room.status === 'connected' && room.roomCode) setLastRoom(room.roomCode)
   }, [room.status, room.roomCode, setLastRoom])
 
   useEffect(() => {
     if (!autoJoinAttempted.current) {
       autoJoinAttempted.current = true
       const targetRoom = initialRoomFromUrl || lastRoom
-      if (targetRoom && room.status === 'idle') {
-        room.joinRoom(targetRoom)
-      }
+      if (targetRoom && room.status === 'idle') room.joinRoom(targetRoom)
     }
   }, [initialRoomFromUrl, lastRoom, room])
 
@@ -60,9 +68,9 @@ export default function App() {
     const link = `${window.location.origin}${window.location.pathname}?room=${room.roomCode}`
     try {
       await navigator.clipboard.writeText(link)
-      toast.success('Room link copied to clipboard!')
+      toast.success('Room link copied!')
     } catch {
-      toast.error('Could not copy the link — copy it manually from the address bar.')
+      toast.error('Could not copy — paste the URL manually.')
     }
   }
 
@@ -71,15 +79,21 @@ export default function App() {
     if (parsed?.url) setRecentVideos(addRecentVideo(parsed.url))
   }
 
+  const hasVideoCall = room.localCallStream || room.remoteCallStreams?.size > 0
+
+  // Derive layout booleans
+  const showLeftSidebar  = activeLayout !== 'focus'
+  const showRightPanel   = activeLayout === 'classic'
+  const leftSidebarWide  = activeLayout === 'sidebar'
+
   if (!supported) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6">
-        <div className="glass-panel max-w-md p-6 text-center">
-          <AlertTriangle className="mx-auto mb-3 h-10 w-10 text-marquee-amber" />
-          <h1 className="font-display text-lg font-semibold text-ink">Browser not supported</h1>
-          <p className="mt-2 text-sm text-ink-muted">
-            Watch Together needs WebRTC and localStorage support. Please open this app in an
-            up-to-date Chrome, Firefox, Edge, or Safari browser.
+      <div className="flex h-full items-center justify-center p-6">
+        <div className="panel max-w-md p-8 text-center">
+          <AlertTriangle className="mx-auto mb-4 h-10 w-10 text-status-error" />
+          <h1 className="text-base font-semibold text-text-primary">Browser not supported</h1>
+          <p className="mt-2 text-sm text-text-secondary">
+            Watch Together needs WebRTC and localStorage. Please use Chrome, Firefox, Edge, or Safari.
           </p>
         </div>
       </div>
@@ -87,45 +101,58 @@ export default function App() {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col overflow-hidden">
-      <Header 
-        theme={theme} 
+    <div className="flex h-full flex-col overflow-hidden">
+
+      {/* ── Header ──────────────────────────────────────────────────── */}
+      <Header
+        theme={theme}
         onToggleTheme={toggleTheme}
+        roomStatus={room.status}
+        roomCode={room.roomCode}
+        onCopyLink={handleCopyLink}
+        onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
         activeLayout={activeLayout}
         setActiveLayout={setActiveLayout}
+        layouts={LAYOUTS}
       />
 
-      <main className="mx-auto flex w-full max-w-7xl flex-1 min-h-0 flex-col gap-4 p-3 sm:p-5 lg:flex-row">
-        {/* Left column: room + participants + video call + (chat if sidebar mode) */}
-        <div 
-          className={`flex flex-col gap-4 lg:w-72 lg:shrink-0 min-h-0 lg:overflow-y-auto [&::-webkit-scrollbar]:hidden pr-1 pb-4 ${
-            activeLayout !== 'classic' && activeLayout !== 'sidebar' && activeLayout !== 'overlay'
-                ? 'lg:hidden' 
-                : ''
-          }`}
-        >
-          <RoomPanel
-            username={username}
-            onUsernameChange={setUsername}
-            status={room.status}
-            roomCode={room.roomCode}
-            initialJoinCode={initialRoomFromUrl}
-            onCreateRoom={room.createRoom}
-            onJoinRoom={room.joinRoom}
-            onLeaveRoom={() => {
-              setLastRoom('')
-              room.leaveRoom()
-            }}
-            onCopyLink={handleCopyLink}
-          />
-          {room.status === 'connected' && (
-            <>
-              <div className="hidden lg:block">
-                <Participants participants={room.participants} selfId={room.selfId} />
-              </div>
+      {/* ── Main content area ───────────────────────────────────────── */}
+      <main className="flex flex-1 min-h-0 overflow-hidden">
 
-              {/* Video call panel shown when a call is active */}
-              {(room.localCallStream || room.remoteCallStreams.size > 0) && (
+        {/* ════ LEFT SIDEBAR ════════════════════════════════════════════ */}
+        {showLeftSidebar && (
+          <aside
+            className={`hidden lg:flex flex-col shrink-0 border-r border-app-border overflow-hidden transition-all duration-200 ${
+              leftSidebarWide ? 'w-80 xl:w-96' : 'w-60 xl:w-64'
+            }`}
+            style={{ backgroundColor: '#0C0D13' }}
+          >
+            {/* Scrollable content area */}
+            <div className="flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll">
+
+              {/* Room controls */}
+              <RoomPanel
+                username={username}
+                onUsernameChange={setUsername}
+                status={room.status}
+                roomCode={room.roomCode}
+                initialJoinCode={initialRoomFromUrl}
+                onCreateRoom={room.createRoom}
+                onJoinRoom={room.joinRoom}
+                onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
+                onCopyLink={handleCopyLink}
+              />
+
+              {/* Participants list */}
+              {room.status === 'connected' && (
+                <Participants
+                  participants={room.participants}
+                  selfId={room.selfId}
+                />
+              )}
+
+              {/* ── VIDEO CALL TILES — live in the left sidebar ── */}
+              {room.status === 'connected' && hasVideoCall && (
                 <VideoCall
                   localStream={room.localCallStream}
                   remoteStreams={room.remoteCallStreams}
@@ -138,54 +165,36 @@ export default function App() {
                   onHangUp={room.stopVideoCall}
                 />
               )}
+            </div>
 
-              {/* Start video call button (only when no call active) */}
-              {!room.localCallStream && (
+            {/* Start call button — pinned at bottom */}
+            {room.status === 'connected' && !hasVideoCall && (
+              <div className="p-3 border-t border-app-border shrink-0">
                 <button
+                  type="button"
                   onClick={room.startVideoCall}
-                  className="btn-secondary w-full gap-2 text-sm"
+                  className="btn-secondary w-full gap-2 text-xs"
                   aria-label="Start video call"
                 >
-                  <Video className="h-4 w-4" />
+                  <Video className="h-3.5 w-3.5" />
                   Start video call
                 </button>
-              )}
-            </>
-          )}
-
-          {/* Render Chat in the left column ONLY during Sidebar Mode */}
-          {room.status === 'connected' && (activeLayout === 'sidebar' || activeLayout === 'overlay') && (
-            <div className="hidden lg:flex flex-col flex-1 min-h-[400px]">
-              <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
-            </div>
-          )}
-        </div>
-
-        {/* Mobile tab switcher, only visible once in a room */}
-        {room.status === 'connected' && (
-          <div className="glass-panel flex gap-1 p-1 lg:hidden">
-            {[
-              { id: 'video', label: 'Video' },
-              { id: 'chat', label: 'Chat' },
-              { id: 'people', label: 'People' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setMobileTab(tab.id)}
-                className={`flex-1 rounded-xl py-2 text-sm font-medium transition-colors ${
-                  mobileTab === tab.id ? 'bg-white/10 text-ink' : 'text-ink-faint'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+              </div>
+            )}
+          </aside>
         )}
 
-        {/* Center: video player */}
+        {/* ════ CENTER — VIDEO PLAYER (maximized) ═══════════════════════ */}
+        {/*
+         * flex-1 min-w-0 min-h-0: takes ALL remaining horizontal + vertical
+         * space after sidebars. overflow-hidden ensures the player never
+         * leaks outside this container.
+         */}
         <div
-          className={`flex min-w-0 flex-1 flex-col gap-4 ${
-            room.status === 'connected' && mobileTab !== 'video' ? 'hidden lg:flex' : 'flex'
+          className={`flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden ${
+            room.status === 'connected' && mobileTab !== 'video'
+              ? 'hidden lg:flex'
+              : 'flex'
           }`}
         >
           <VideoPlayer
@@ -194,10 +203,7 @@ export default function App() {
             onPlay={room.play}
             onPause={room.pause}
             onSeek={room.seek}
-            onSpeedChange={(rate, time) => {
-              setSavedSpeed(rate)
-              room.setSpeed(rate, time)
-            }}
+            onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
             recentVideos={recentVideos}
             savedVolume={savedVolume}
             savedSpeed={savedSpeed}
@@ -209,33 +215,118 @@ export default function App() {
           />
         </div>
 
-        {/* Right column: chat (and participants on mobile) */}
-        <div
-          className={`flex min-h-0 flex-col gap-4 lg:w-80 lg:shrink-0 pb-4 ${
-            room.status === 'connected' && mobileTab === 'chat' 
-              ? 'flex' 
-              : (activeLayout === 'focus' || activeLayout === 'sidebar' || activeLayout === 'overlay' ? 'hidden' : 'hidden lg:flex')
-          }`}
-        >
-          {room.status === 'connected' ? (
-            <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
-          ) : (
-            <div className="glass-panel flex flex-1 items-center justify-center p-6 text-center text-sm text-ink-faint">
-              Create or join a room to start chatting.
-            </div>
-          )}
-        </div>
-
-        {room.status === 'connected' && mobileTab === 'people' && (
-          <div className="lg:hidden">
-            <Participants participants={room.participants} selfId={room.selfId} />
-          </div>
+        {/* ════ RIGHT PANEL — Chat / People ═════════════════════════════ */}
+        {showRightPanel && (
+          <RightPanel
+            room={room}
+            username={username}
+            mobileTab={mobileTab}
+          />
         )}
       </main>
 
-      <footer className="px-6 py-4 text-center text-xs text-ink-faint">
-        Peer-to-peer and serverless. Your room data stays on encrypted WebRTC channels. Built by <a href="https://prabhakar-kumar.vercel.app/" target="_blank" rel="noopener noreferrer" className="font-medium text-blue-300 transition-colors hover:text-blue-200 hover:underline">Prabhakar Kumar</a>.
-      </footer>
+      {/* ── Mobile bottom tabs ──────────────────────────────────────── */}
+      {room.status === 'connected' && (
+        <div
+          className="lg:hidden flex border-t border-app-border shrink-0"
+          style={{ backgroundColor: '#0C0D13' }}
+        >
+          {[
+            { id: 'video',  label: 'Video'  },
+            { id: 'chat',   label: 'Chat'   },
+            { id: 'people', label: 'People' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setMobileTab(tab.id)}
+              className={`flex-1 py-3 text-xs font-medium transition-colors ${
+                mobileTab === tab.id
+                  ? 'text-text-primary border-t-2 border-accent-blue -mt-px'
+                  : 'text-text-muted'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Mobile chat/people panels */}
+      {room.status === 'connected' && mobileTab === 'chat' && (
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#0C0D13' }}>
+          <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
+        </div>
+      )}
+      {room.status === 'connected' && mobileTab === 'people' && (
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll" style={{ backgroundColor: '#0C0D13' }}>
+          <Participants participants={room.participants} selfId={room.selfId} />
+        </div>
+      )}
+      {/* Mobile: not connected — room panel */}
+      {room.status !== 'connected' && (
+        <div className="lg:hidden flex flex-col overflow-y-auto flex-1 p-3" style={{ backgroundColor: '#0C0D13' }}>
+          <RoomPanel
+            username={username}
+            onUsernameChange={setUsername}
+            status={room.status}
+            roomCode={room.roomCode}
+            initialJoinCode={initialRoomFromUrl}
+            onCreateRoom={room.createRoom}
+            onJoinRoom={room.joinRoom}
+            onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
+            onCopyLink={handleCopyLink}
+          />
+        </div>
+      )}
     </div>
+  )
+}
+
+/* ── Right panel (chat + people tabs) ────────────────────────────────────── */
+function RightPanel({ room, username }) {
+  const [tab, setTab] = useState('chat')
+
+  return (
+    <aside
+      className="hidden lg:flex flex-col w-72 xl:w-80 shrink-0 border-l border-app-border overflow-hidden"
+      style={{ backgroundColor: '#0C0D13' }}
+    >
+      {/* Tab bar */}
+      {room.status === 'connected' && (
+        <div className="flex border-b border-app-border shrink-0">
+          {[{ id: 'chat', label: 'Chat' }, { id: 'people', label: 'People' }].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+                tab === t.id
+                  ? 'text-text-primary border-b-2 border-accent-blue -mb-px'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {room.status === 'connected' ? (
+          tab === 'chat' ? (
+            <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
+          ) : (
+            <div className="overflow-y-auto sidebar-scroll flex-1">
+              <Participants participants={room.participants} selfId={room.selfId} />
+            </div>
+          )
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-6 text-center">
+            <p className="text-xs text-text-muted leading-relaxed">
+              Create or join a room to start chatting.
+            </p>
+          </div>
+        )}
+      </div>
+    </aside>
   )
 }

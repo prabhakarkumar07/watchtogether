@@ -1,7 +1,17 @@
-import { useEffect, useRef } from 'react'
-import { Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Mic, MicOff, PhoneOff, Pin, PinOff, Video, VideoOff } from 'lucide-react'
 
-function VideoTile({ stream, label, muted = false, isLocal = false }) {
+/* ── Single video tile (sidebar-optimised) ───────────────────────────────── */
+function VideoTile({
+  stream,
+  label,
+  muted    = false,
+  isLocal  = false,
+  isMicOn  = true,
+  isCamOn  = true,
+  isPinned = false,
+  onPin,
+}) {
   const videoRef = useRef(null)
 
   useEffect(() => {
@@ -9,85 +19,206 @@ function VideoTile({ stream, label, muted = false, isLocal = false }) {
     if (!video || !stream) return
     video.srcObject = stream
     video.play().catch(() => {})
-    return () => {
-      if (video.srcObject === stream) video.srcObject = null
-    }
+    return () => { if (video.srcObject === stream) video.srcObject = null }
   }, [stream])
 
   return (
-    <div className="relative aspect-video min-w-0 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/70">
-      {stream ? (
-        <video ref={videoRef} autoPlay playsInline muted={muted || isLocal} className="h-full w-full object-cover" />
+    <div
+      className={`video-tile group relative w-full aspect-video ${isPinned ? 'video-tile-pinned' : ''}`}
+    >
+      {/* Video or avatar placeholder */}
+      {stream && isCamOn ? (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={muted || isLocal}
+          className="h-full w-full object-cover"
+        />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-black/60">
-          <VideoOff className="h-5 w-5 text-white/30" />
+        <div
+          className="flex h-full w-full items-center justify-center"
+          style={{ backgroundColor: '#161820' }}
+        >
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold"
+            style={{ backgroundColor: '#1C1E28', color: '#8B8FA8' }}
+          >
+            {label?.slice(0, 1).toUpperCase() || '?'}
+          </div>
         </div>
       )}
 
-      <div className="absolute bottom-1 left-1.5 flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium text-white/90">
-        {label}
+      {/* Bottom name + status bar */}
+      <div
+        className="absolute bottom-0 inset-x-0 flex items-center justify-between gap-1 px-2 py-1.5"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.88), transparent)' }}
+      >
+        <span className="truncate text-[11px] font-medium text-white/90">
+          {label}
+          {isLocal && <span className="ml-1 text-[10px] text-white/45">(you)</span>}
+        </span>
+        <div className="flex items-center gap-0.5 shrink-0">
+          {!isMicOn && (
+            <span
+              className="flex h-4 w-4 items-center justify-center rounded"
+              style={{ backgroundColor: 'rgba(239,68,68,0.9)' }}
+              title="Muted"
+              aria-label="Muted"
+            >
+              <MicOff className="h-2.5 w-2.5 text-white" />
+            </span>
+          )}
+          {!isCamOn && (
+            <span
+              className="flex h-4 w-4 items-center justify-center rounded"
+              style={{ backgroundColor: 'rgba(239,68,68,0.9)' }}
+              title="Camera off"
+              aria-label="Camera off"
+            >
+              <VideoOff className="h-2.5 w-2.5 text-white" />
+            </span>
+          )}
+        </div>
       </div>
 
-      {isLocal && (
-        <div className="absolute right-1 top-1 rounded-md bg-white px-1.5 py-0.5 text-[9px] font-bold text-void">
-          YOU
+      {/* Hover overlay: pin button */}
+      {onPin && (
+        <button
+          type="button"
+          onClick={onPin}
+          className="absolute top-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: isPinned ? 'rgba(59,130,246,0.85)' : 'rgba(0,0,0,0.65)', color: 'white' }}
+          title={isPinned ? 'Unpin' : 'Pin to top'}
+          aria-label={isPinned ? 'Unpin' : 'Pin participant'}
+        >
+          {isPinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
+        </button>
+      )}
+
+      {/* Pinned badge */}
+      {isPinned && (
+        <div className="absolute top-1.5 left-1.5">
+          <span
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+            style={{ backgroundColor: 'rgba(59,130,246,0.85)', color: 'white' }}
+          >
+            <Pin className="h-2.5 w-2.5" />
+            Pinned
+          </span>
         </div>
       )}
     </div>
   )
 }
 
-function gridCols(total) {
-  if (total <= 2) return 'grid-cols-1'
-  if (total <= 4) return 'grid-cols-2'
-  return 'grid-cols-3'
-}
-
+/* ── VideoCall — renders as a vertical list inside the left sidebar ───────── */
 export default function VideoCall({
   localStream,
   remoteStreams,
   participants,
+  selfId,
   isMicOn,
   isCamOn,
   onToggleMic,
   onToggleCam,
   onHangUp,
 }) {
-  const hasAnyStream = localStream || remoteStreams.size > 0
+  const [pinnedId, setPinnedId] = useState(null)
+
+  const hasAnyStream = localStream || remoteStreams?.size > 0
   if (!hasAnyStream) return null
 
-  const getParticipantName = (peerId) => participants.find((p) => p.id === peerId)?.name || 'Peer'
-  const totalTiles = (localStream ? 1 : 0) + remoteStreams.size
-  const cols = gridCols(totalTiles)
+  const getParticipantName = (peerId) =>
+    participants.find((p) => p.id === peerId)?.name || 'Peer'
+
+  // Build ordered tile list
+  const allTiles = [
+    ...(localStream ? [{ id: 'local', stream: localStream, isLocal: true, label: 'You' }] : []),
+    ...([...(remoteStreams?.entries() || [])].map(([peerId, stream]) => ({
+      id:      peerId,
+      stream,
+      isLocal: false,
+      label:   getParticipantName(peerId),
+    }))),
+  ]
+
+  const totalTiles = allTiles.length
+  const handlePin  = (id) => setPinnedId((prev) => (prev === id ? null : id))
+
+  // Sort so pinned is first
+  const sortedTiles = pinnedId
+    ? [...allTiles].sort((a) => (a.id === pinnedId ? -1 : 1))
+    : allTiles
 
   return (
-    <section className="glass-panel flex flex-col gap-2.5 p-3" aria-label="Video call">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col border-t border-app-border">
+      {/* Section header + controls */}
+      <div className="section-header justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-marquee-live" />
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            Video call - {totalTiles} {totalTiles === 1 ? 'person' : 'people'}
+          <span className="h-1.5 w-1.5 rounded-full bg-status-online" />
+          <span>
+            Video call
+          </span>
+          <span
+            className="font-mono text-[10px] rounded px-1.5 py-0.5"
+            style={{ backgroundColor: '#161820', color: '#545769' }}
+          >
+            {totalTiles}
           </span>
         </div>
+
+        {/* Mic / Cam / End call */}
         <div className="flex items-center gap-1">
-          <button type="button" onClick={onToggleMic} className={'btn-icon h-7 w-7 text-xs ' + (!isMicOn ? 'bg-marquee-coral/20 text-marquee-coral' : 'bg-white/10')} title={isMicOn ? 'Mute microphone' : 'Unmute microphone'} aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'}>
-            {isMicOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+          <button
+            type="button"
+            onClick={onToggleMic}
+            className="btn-icon h-6 w-6"
+            style={!isMicOn ? { backgroundColor: 'rgba(239,68,68,0.15)', color: '#FCA5A5', borderColor: 'rgba(239,68,68,0.3)' } : {}}
+            title={isMicOn ? 'Mute' : 'Unmute'}
+            aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'}
+          >
+            {isMicOn ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
           </button>
-          <button type="button" onClick={onToggleCam} className={'btn-icon h-7 w-7 ' + (!isCamOn ? 'bg-marquee-coral/20 text-marquee-coral' : 'bg-white/10')} title={isCamOn ? 'Turn off camera' : 'Turn on camera'} aria-label={isCamOn ? 'Turn off camera' : 'Turn on camera'}>
-            {isCamOn ? <Video className="h-3.5 w-3.5" /> : <VideoOff className="h-3.5 w-3.5" />}
+          <button
+            type="button"
+            onClick={onToggleCam}
+            className="btn-icon h-6 w-6"
+            style={!isCamOn ? { backgroundColor: 'rgba(239,68,68,0.15)', color: '#FCA5A5', borderColor: 'rgba(239,68,68,0.3)' } : {}}
+            title={isCamOn ? 'Camera off' : 'Camera on'}
+            aria-label={isCamOn ? 'Turn off camera' : 'Turn on camera'}
+          >
+            {isCamOn ? <Video className="h-3 w-3" /> : <VideoOff className="h-3 w-3" />}
           </button>
-          <button type="button" onClick={onHangUp} className="btn-icon h-7 w-7 bg-red-500/20 text-red-400 hover:bg-red-500/30" title="End call" aria-label="End call">
-            <PhoneOff className="h-3.5 w-3.5" />
+          <button
+            type="button"
+            onClick={onHangUp}
+            className="btn-icon h-6 w-6"
+            style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#FCA5A5', borderColor: 'rgba(239,68,68,0.3)' }}
+            title="End call"
+            aria-label="End call"
+          >
+            <PhoneOff className="h-3 w-3" />
           </button>
         </div>
       </div>
 
-      <div className={'grid ' + cols + ' gap-1.5'}>
-        {localStream && <VideoTile stream={localStream} label={isMicOn ? 'You' : 'Muted - You'} isLocal muted />}
-        {[...remoteStreams.entries()].map(([peerId, stream]) => (
-          <VideoTile key={peerId} stream={stream} label={getParticipantName(peerId)} />
+      {/* Tile list — vertical stack */}
+      <div className="flex flex-col gap-1.5 p-2">
+        {sortedTiles.map((tile) => (
+          <VideoTile
+            key={tile.id}
+            stream={tile.stream}
+            label={tile.label}
+            muted={tile.isLocal}
+            isLocal={tile.isLocal}
+            isMicOn={tile.isLocal ? isMicOn : true}
+            isCamOn={tile.isLocal ? isCamOn : true}
+            isPinned={pinnedId === tile.id}
+            onPin={totalTiles > 1 ? () => handlePin(tile.id) : undefined}
+          />
         ))}
       </div>
-    </section>
+    </div>
   )
 }
