@@ -14,6 +14,7 @@ import { STORAGE_KEYS, addRecentVideo } from './lib/storage.js'
 import { useResizablePanel } from './hooks/useResizablePanel.js'
 import EffectsOverlay from './components/EffectsOverlay.jsx'
 import EffectsPicker from './components/EffectsPicker.jsx'
+import LandingPage from './components/LandingPage.jsx'
 
 function isBrowserSupported() {
   return typeof window !== 'undefined' && !!window.RTCPeerConnection && !!window.localStorage
@@ -117,6 +118,31 @@ export default function App() {
             Watch Together needs WebRTC and localStorage. Please use Chrome, Firefox, Edge, or Safari.
           </p>
         </div>
+      </div>
+    )
+  }
+
+  // ── Show landing page when not in a room ──────────────────────────────
+  if (room.status === 'idle' || room.status === 'error') {
+    return (
+      <>
+        <EffectsOverlay />
+        <LandingPage
+          username={username}
+          onUsernameChange={setUsername}
+          onCreateRoom={room.createRoom}
+          onJoinRoom={room.joinRoom}
+        />
+      </>
+    )
+  }
+
+  // ── Connecting spinner ────────────────────────────────────────────────
+  if (room.status === 'connecting') {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4" style={{ backgroundColor: '#090A0F' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />
+        <p className="text-sm font-medium" style={{ color: 'rgba(232,233,240,0.5)' }}>Connecting…</p>
       </div>
     )
   }
