@@ -18,10 +18,8 @@ export function useResizablePanel({ defaultWidth, minWidth, maxWidth, storageKey
     const handleMouseMove = (mouseEvent) => {
       let newWidth
       if (side === 'left') {
-        // Left sidebar resizing (mouse moves right = wider)
         newWidth = mouseEvent.clientX
       } else {
-        // Right sidebar resizing (mouse moves left = wider)
         newWidth = window.innerWidth - mouseEvent.clientX
       }
       setWidth(Math.min(Math.max(newWidth, minWidth), maxWidth))
@@ -37,6 +35,14 @@ export function useResizablePanel({ defaultWidth, minWidth, maxWidth, storageKey
     window.addEventListener('mousemove', handleMouseMove)
     window.addEventListener('mouseup', handleMouseUp)
   }, [minWidth, maxWidth, side])
+
+  // Cleanup listeners if component unmounts while resizing
+  useEffect(() => {
+    return () => {
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [])
 
   return { width, startResizing }
 }

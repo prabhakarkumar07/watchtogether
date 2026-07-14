@@ -15,6 +15,8 @@ import { useResizablePanel } from './hooks/useResizablePanel.js'
 import EffectsOverlay from './components/EffectsOverlay.jsx'
 import EffectsPicker from './components/EffectsPicker.jsx'
 import LandingPage from './components/LandingPage.jsx'
+import VideoGrid from './components/VideoGrid.jsx'
+import { Grid } from 'lucide-react'
 
 function isBrowserSupported() {
   return typeof window !== 'undefined' && !!window.RTCPeerConnection && !!window.localStorage
@@ -32,6 +34,7 @@ const LAYOUTS = [
   { id: 'theater', label: 'Theater',  Icon: Monitor,  hint: 'Sidebar · Max video'       },
   { id: 'focus',   label: 'Focus',    Icon: Square,   hint: 'Video only'                 },
   { id: 'sidebar', label: 'Sidebar',  Icon: Sidebar,  hint: 'Wide sidebar · Video'       },
+  { id: 'grid',    label: 'Grid',     Icon: Grid,     hint: 'Fullscreen grid'            },
 ]
 
 export default function App() {
@@ -43,7 +46,7 @@ export default function App() {
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const [savedVolume, setSavedVolume]   = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed]     = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
-  const [activeLayout, setActiveLayout] = useLocalStorage('activeLayout', 'classic')
+  const [activeLayout, setActiveLayout] = useState('classic')
 
   const [supported]  = useState(isBrowserSupported)
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
@@ -88,8 +91,25 @@ export default function App() {
   const canJoinCall = !hasLocalCall && room.remoteCallStreams?.size > 0
 
   // Derive layout booleans
-  const showLeftSidebar  = activeLayout !== 'focus'
+  const showLeftSidebar  = activeLayout !== 'focus' && activeLayout !== 'grid'
   const showRightPanel   = activeLayout === 'classic'
+
+  // Automatic Layout Switching
+  const [preGridLayout, setPreGridLayout] = useState(null)
+  
+  useEffect(() => {
+    // If video/screen share starts and we are in grid, switch to classic
+    if (room.videoState?.source && activeLayout === 'grid') {
+      setPreGridLayout('grid')
+      setActiveLayout('classic')
+    }
+    
+    // If video/screen share ends and we were previously in grid, switch back
+    if (!room.videoState?.source && preGridLayout === 'grid') {
+      setActiveLayout('grid')
+      setPreGridLayout(null)
+    }
+  }, [room.videoState?.source, activeLayout, preGridLayout, setActiveLayout])
 
   // Resizable panels
   const leftPanel = useResizablePanel({
@@ -266,22 +286,33 @@ export default function App() {
               : 'flex'
           }`}
         >
-          <VideoPlayer
-            videoState={room.videoState}
-            onLoadVideo={handleLoadVideo}
-            onPlay={room.play}
-            onPause={room.pause}
-            onSeek={room.seek}
-            onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
-            recentVideos={recentVideos}
-            savedVolume={savedVolume}
-            savedSpeed={savedSpeed}
-            onVolumeChange={setSavedVolume}
-            incomingStream={room.incomingStream}
-            outgoingStream={room.outgoingStream}
-            onStartScreenShare={room.startScreenShare}
-            onStopScreenShare={room.stopScreenShare}
-          />
+          {activeLayout === 'grid' && !room.videoState?.source ? (
+            <VideoGrid
+              localStream={room.localCallStream}
+              remoteStreams={room.remoteCallStreams}
+              participants={room.participants}
+              selfId={room.selfId}
+              isMicOn={room.isMicOn}
+              isCamOn={room.isCamOn}
+            />
+          ) : (
+            <VideoPlayer
+              videoState={room.videoState}
+              onLoadVideo={handleLoadVideo}
+              onPlay={room.play}
+              onPause={room.pause}
+              onSeek={room.seek}
+              onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
+              recentVideos={recentVideos}
+              savedVolume={savedVolume}
+              savedSpeed={savedSpeed}
+              onVolumeChange={setSavedVolume}
+              incomingStream={room.incomingStream}
+              outgoingStream={room.outgoingStream}
+              onStartScreenShare={room.startScreenShare}
+              onStopScreenShare={room.stopScreenShare}
+            />
+          )}
         </div>
 
         {/* ════ RIGHT PANEL — Chat / People ═════════════════════════════ */}

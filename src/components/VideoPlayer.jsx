@@ -111,16 +111,35 @@ export default function VideoPlayer({
   /* ── Polling ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    pollRef.current = setInterval(async () => {
-      if (!engineRef.current || seekPreview !== null) return
-      const [time, duration] = await Promise.all([
-        engineRef.current.getCurrentTime(),
-        engineRef.current.getDuration(),
-      ])
-      setLocalTime(time || 0)
-      setLocalDuration(duration || 0)
-    }, 250)
-    return () => clearInterval(pollRef.current)
+    let cancelled = false
+
+    const poll = async () => {
+      if (cancelled) return
+      if (engineRef.current && seekPreview === null) {
+        try {
+          const [time, duration] = await Promise.all([
+            engineRef.current.getCurrentTime(),
+            engineRef.current.getDuration(),
+          ])
+          if (!cancelled) {
+            setLocalTime(time || 0)
+            setLocalDuration(duration || 0)
+          }
+        } catch (err) {
+          // Ignore polling errors
+        }
+      }
+      if (!cancelled) {
+        pollRef.current = setTimeout(poll, 250)
+      }
+    }
+
+    poll()
+
+    return () => {
+      cancelled = true
+      if (pollRef.current) clearTimeout(pollRef.current)
+    }
   }, [seekPreview, source])
 
   /* ── Drift correction ───────────────────────────────────────────────── */
