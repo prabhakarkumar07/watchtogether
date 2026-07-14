@@ -270,25 +270,6 @@ export default function VideoCall({
           </div>
         )}
       </div>
-
-      {/*
-       * If we're watching remote streams but haven't joined the call yet,
-       * show a "Join call" prompt inside the VideoCall section too.
-       * (The main button is also shown at the bottom of the sidebar.)
-       */}
-      {canJoinCall && (
-        <div className="px-1.5 pb-2">
-          <button
-            type="button"
-            onClick={onJoinCall}
-            className="btn-primary w-full gap-1.5 text-[11px] h-7"
-            aria-label="Join video call"
-          >
-            <Video className="h-3.5 w-3.5" />
-            Join call
-          </button>
-        </div>
-      )}
     </div>
   )
 }
