@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { Mic, MicOff, PhoneOff, Pin, PinOff, Video, VideoOff, Users } from 'lucide-react'
 
 import VideoTile from './VideoTile.jsx'
 
 /* ── VideoCall sidebar component ─────────────────────────────────────────── */
-export default function VideoCall({
+export default React.memo(function VideoCall({
   localStream,
   remoteStreams,
   participants,
@@ -139,4 +139,4 @@ export default function VideoCall({
       </div>
     </div>
   )
-}
+})

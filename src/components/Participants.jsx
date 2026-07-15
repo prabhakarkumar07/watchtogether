@@ -63,7 +63,7 @@ const ParticipantItem = React.memo(function ParticipantItem({ p, selfId }) {
   )
 })
 
-export default function Participants({ participants, selfId }) {
+export default React.memo(function Participants({ participants, selfId }) {
   const [showAll, setShowAll] = useState(false)
   
   const MAX_VISIBLE = 20
@@ -108,4 +108,4 @@ export default function Participants({ participants, selfId }) {
       </ul>
     </div>
   )
-}
+})

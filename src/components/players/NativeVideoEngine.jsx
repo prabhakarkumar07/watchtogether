@@ -13,7 +13,7 @@ const NativeVideoEngine = forwardRef(function NativeVideoEngine(
   const videoRef = useRef(null)
 
   useImperativeHandle(ref, () => ({
-    play: () => videoRef.current?.play().catch(() => {}),
+    play: () => videoRef.current?.play(),
     pause: () => videoRef.current?.pause(),
     seekTo: (time) => {
       if (videoRef.current) videoRef.current.currentTime = time

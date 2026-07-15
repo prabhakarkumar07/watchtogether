@@ -3,6 +3,8 @@ import Peer from 'peerjs'
 import { nanoid } from 'nanoid'
 import { createRoomCode, roomCodeToPeerId, normalizeRoomCode, describePeerError } from '../lib/peer.js'
 import { deriveRoomKey, encryptPayload, decryptPayload, isEncrypted } from '../lib/crypto.js'
+import { useLocalStorage } from './useLocalStorage.js'
+import { STORAGE_KEYS, writeStorage, readStorage } from '../lib/storage.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const HEARTBEAT_MS   = 10000  // Increased from 6s → 10s — 40% fewer encryptions
@@ -27,6 +29,13 @@ function cleanChatText(value) {
 function initialVideoState() {
   return { source: null, isPlaying: false, playbackRate: 1, time: 0, updatedAt: Date.now() }
 }
+function getPersistedVideoState() {
+  const state = readStorage(STORAGE_KEYS.VIDEO_STATE, { source: null, isPlaying: false, playbackRate: 1, time: 0, updatedAt: Date.now() })
+  if (state.source?.type === 'screenshare') {
+    return { source: null, isPlaying: false, playbackRate: 1, time: 0, updatedAt: Date.now() }
+  }
+  return state
+}
 
 /**
  * Encapsulates all peer-to-peer room logic: hosting, joining, chat relay,
@@ -43,17 +52,17 @@ export function useRoom({ username, onToast }) {
   const [roomCode,         setRoomCode]         = useState(null)
   const [isHost,           setIsHost]           = useState(false)
   const [participants,     setParticipants]     = useState([])
-  const [messages,         setMessages]         = useState([])
-  const [videoState,       setVideoState]       = useState(initialVideoState)
+  const [messages,         setMessages]         = useLocalStorage(STORAGE_KEYS.CHAT_HISTORY, [])
+  const [videoState,       setVideoState]       = useLocalStorage(STORAGE_KEYS.VIDEO_STATE, getPersistedVideoState())
   const [incomingStream,   setIncomingStream]   = useState(null)
   const [outgoingStream,   setOutgoingStream]   = useState(null)
   const [localCallStream,  setLocalCallStream]  = useState(null)
   const [remoteCallStreams,setRemoteCallStreams] = useState(new Map())
-  const [isMicOn,          setIsMicOn]          = useState(true)
-  const [isCamOn,          setIsCamOn]          = useState(true)
+  const [isMicOn,          setIsMicOn]          = useState(false)
+  const [isCamOn,          setIsCamOn]          = useState(false)
 
-  const isMicOnRef = useRef(true)
-  const isCamOnRef = useRef(true)
+  const isMicOnRef = useRef(isMicOn)
+  const isCamOnRef = useRef(isCamOn)
   const isLeavingRef = useRef(false)
 
   useEffect(() => { isMicOnRef.current = isMicOn }, [isMicOn])
@@ -375,15 +384,15 @@ export function useRoom({ username, onToast }) {
 
   // ── Public actions ──────────────────────────────────────────────────────────
 
-  const createRoom = useCallback(async () => {
+  const createRoom = useCallback(async (existingCode = null) => {
     if (!usernameRef.current?.trim()) { toast.error?.('Enter a username first.'); return }
     isLeavingRef.current = false
     setStatus('connecting')
 
     let attempts = 0
-    const attemptCreate = async () => {
+    const attemptCreate = async (forceNewCode = false) => {
       attempts += 1
-      const code = createRoomCode()
+      const code = (existingCode && !forceNewCode) ? existingCode : createRoomCode()
 
       try { cryptoKeyRef.current = await deriveRoomKey(code) }
       catch { toast.error?.('Failed to set up encryption. Try refreshing.'); setStatus('error'); return }
@@ -395,6 +404,7 @@ export function useRoom({ username, onToast }) {
       peer.on('open', () => {
         setRoomCode(code)
         setIsHost(true)
+        writeStorage(STORAGE_KEYS.WAS_HOST, true)
         selfIdRef.current = peer.id
         setStatus('connected')
         setParticipants([{ id: peer.id, name: usernameRef.current, isHost: true }])
@@ -417,7 +427,18 @@ export function useRoom({ username, onToast }) {
       setupCallListener(peer)
       peer.on('connection', (conn) => wireGuestConnection(conn))
       peer.on('error', (err) => {
-        if (err.type === 'unavailable-id' && attempts < 5) { peer.destroy(); attemptCreate(); return }
+        if (err.type === 'unavailable-id') {
+          peer.destroy()
+          if (existingCode && !forceNewCode) {
+            // The old ID is legitimately stuck on the server. We have to create a new one.
+            attemptCreate(true)
+          } else if (attempts < 5) {
+            attemptCreate()
+          } else {
+            setStatus('error'); toast.error?.('Failed to create room.')
+          }
+          return
+        }
         setStatus('error'); toast.error?.(describePeerError(err))
       })
       peer.on('disconnected', () => { if (!peer.destroyed && !isLeavingRef.current) peer.reconnect() })
@@ -449,6 +470,7 @@ export function useRoom({ username, onToast }) {
         secureSend(conn, { type: 'hello', name: usernameRef.current })
         setRoomCode(code)
         setIsHost(false)
+        writeStorage(STORAGE_KEYS.WAS_HOST, false)
         setStatus('connected')
         toast.success?.(`Joined room ${code} with end-to-end encrypted controls.`)
       })
@@ -597,7 +619,7 @@ export function useRoom({ username, onToast }) {
     }
   }, [])
 
-  const startVideoCall = useCallback(async () => {
+  const startVideoCall = useCallback(async (autoJoined = false) => {
     if (status !== 'connected') { toast.error?.('Join or create a room first.'); return }
     if (!navigator.mediaDevices?.getUserMedia) { toast.error?.('Camera not available.'); return }
     try {
@@ -605,10 +627,18 @@ export function useRoom({ username, onToast }) {
         video: true,
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       })
+      
+      // If auto-joining from a refresh, force tracks OFF initially for privacy.
+      if (autoJoined) {
+        stream.getAudioTracks().forEach(t => t.enabled = false)
+        stream.getVideoTracks().forEach(t => t.enabled = false)
+      }
+      
       localCallStreamRef.current = stream
       setLocalCallStream(stream)
-      setIsMicOn(true)
-      setIsCamOn(true)
+      setIsMicOn(!autoJoined)
+      setIsCamOn(!autoJoined)
+      writeStorage(STORAGE_KEYS.WAS_IN_CALL, true)
       videoCallPeersRef.current.clear()
       callAllPeers(stream)
     } catch (err) {
@@ -623,6 +653,7 @@ export function useRoom({ username, onToast }) {
       localCallStreamRef.current = null
       setLocalCallStream(null)
     }
+    writeStorage(STORAGE_KEYS.WAS_IN_CALL, false)
     for (const call of videoMediaCallsRef.current.values()) try { call.close?.() } catch { /* ok */ }
     videoMediaCallsRef.current.clear()
     videoCallPeersRef.current.clear()

@@ -1,7 +1,7 @@
+import React, { useEffect, useRef, useState } from 'react'
 import { Clapperboard, Check, Copy, Moon, Sun, Wifi } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
 
-export default function Header({
+export default React.memo(function Header({
   theme,
   onToggleTheme,
   roomStatus,
@@ -167,4 +167,4 @@ export default function Header({
       </div>
     </header>
   )
-}
+})

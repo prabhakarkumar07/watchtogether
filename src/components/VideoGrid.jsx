@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo, useRef, useCallback } from 'react'
 import VideoTile from './VideoTile.jsx'
 
 /**
@@ -20,7 +20,7 @@ function calculateGrid(count) {
   return { cols, rows }
 }
 
-export default function VideoGrid({
+export default React.memo(function VideoGrid({
   localStream,
   remoteStreams,
   participants,
@@ -29,6 +29,15 @@ export default function VideoGrid({
   isCamOn
 }) {
   const [pinnedId, setPinnedId] = useState(null)
+  const containerRef = useRef(null)
+
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.requestFullscreen?.().catch(() => {})
+    } else {
+      document.exitFullscreen?.().catch(() => {})
+    }
+  }, [])
 
   const hasAnyStream = localStream || remoteStreams?.size > 0
   if (!hasAnyStream) {
@@ -43,7 +52,7 @@ export default function VideoGrid({
     participants.find((p) => p.id === peerId)
 
   // Build tile list
-  const allTiles = [
+  const allTiles = useMemo(() => [
     ...(localStream ? [{ 
       id: 'local', 
       stream: localStream, 
@@ -61,7 +70,7 @@ export default function VideoGrid({
         isHost:  p?.isHost
       }
     })),
-  ]
+  ], [localStream, remoteStreams, participants, selfId])
 
   const handlePin = (id) => setPinnedId((prev) => (prev === id ? null : id))
 
@@ -123,7 +132,11 @@ export default function VideoGrid({
   const grid = calculateGrid(count)
   
   return (
-    <div className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden">
+    <div 
+      ref={containerRef}
+      onDoubleClick={toggleFullscreen}
+      className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden"
+    >
       <div 
         className="flex-1 min-h-0 grid gap-2 place-content-center w-full h-full"
         style={{
@@ -150,4 +163,4 @@ export default function VideoGrid({
       </div>
     </div>
   )
-}
+})

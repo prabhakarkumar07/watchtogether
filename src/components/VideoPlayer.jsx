@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Film,
   Gauge,
@@ -35,7 +35,7 @@ function formatTime(seconds) {
   return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`
 }
 
-export default function VideoPlayer({
+export default React.memo(function VideoPlayer({
   videoState,
   onLoadVideo,
   onPlay,
@@ -59,6 +59,7 @@ export default function VideoPlayer({
   const [localTime, setLocalTime]       = useState(0)
   const [localDuration, setLocalDuration] = useState(0)
   const [localPlaying, setLocalPlaying] = useState(false)
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [seekPreview, setSeekPreview]   = useState(null)
   const [volume, setVolume]             = useState(savedVolume ?? 0.8)
   const [mutedPrevVolume, setMutedPrevVolume] = useState(null)
@@ -142,7 +143,18 @@ export default function VideoPlayer({
     }
   }, [seekPreview, source])
 
-  /* ── Drift correction ───────────────────────────────────────────────── */
+  /* ── Autoplay Block Detection ───────────────────────────────────────── */
+
+  useEffect(() => {
+    if (videoState.isPlaying && !localPlaying && ready) {
+      const timer = setTimeout(() => setAutoplayBlocked(true), 1500)
+      return () => clearTimeout(timer)
+    } else if (localPlaying) {
+      setAutoplayBlocked(false)
+    }
+  }, [videoState.isPlaying, localPlaying, ready])
+
+  /* ── Synchronize state to engine ────────────────────────────────────── */
 
   useEffect(() => {
     if (!videoState?.source || videoState.source.type === 'screenshare' || !engineRef.current || !ready) return
@@ -155,7 +167,10 @@ export default function VideoPlayer({
       const current = await engine.getCurrentTime()
       if (cancelled) return
       if (Math.abs(current - target) > DRIFT_TOLERANCE_SECONDS) engine.seekTo(Math.max(target, 0))
-      if (videoState.isPlaying && !localPlaying) engine.play()
+      if (videoState.isPlaying && !localPlaying) {
+        const p = engine.play()
+        if (p && p.catch) p.catch(() => setAutoplayBlocked(true))
+      }
       if (!videoState.isPlaying && localPlaying) engine.pause()
       if (videoState.playbackRate !== speed) {
         engine.setPlaybackRate(videoState.playbackRate)
@@ -256,21 +271,15 @@ export default function VideoPlayer({
   /* ── Render ─────────────────────────────────────────────────────────── */
 
   return (
-    /*
-     * Full-height flex column. The video player fills all available vertical
-     * space. No overflow-y here — parent layout manages the fixed viewport.
-     */
     <div
       className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden"
       style={{ backgroundColor: '#090A0F' }}
     >
-      {/* ── Toolbar (URL input) ─────────────────────────────────────────── */}
       <div
         className="flex flex-col gap-1.5 px-2 py-1.5 border-b border-app-border shrink-0"
         style={{ backgroundColor: '#0C0D13' }}
       >
         <div className="flex gap-2">
-          {/* URL input */}
           <div className="relative flex-1">
             <LinkIcon
               className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-text-muted"
@@ -285,8 +294,6 @@ export default function VideoPlayer({
               aria-label="Video URL"
             />
           </div>
-
-          {/* Load */}
           <button
             type="button"
             onClick={handleLoadClick}
@@ -297,33 +304,31 @@ export default function VideoPlayer({
             <Film className="h-3 w-3" />
             Load
           </button>
-
-          {/* Screen share */}
-          {outgoingStream ? (
-            <button
-              type="button"
-              onClick={onStopScreenShare}
-              className="btn-icon h-7 w-auto px-2 gap-1 text-[11px]"
-              style={{ color: '#FCA5A5', backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }}
-              aria-label="Stop sharing screen"
-            >
-              <MonitorOff className="h-3 w-3" />
-              <span className="hidden sm:inline">Stop</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={onStartScreenShare}
-              className="btn-secondary h-7 w-auto px-2 gap-1 text-[11px]"
-              aria-label="Share screen"
-            >
-              <Monitor className="h-3 w-3" />
-              <span className="hidden sm:inline">Share</span>
-            </button>
+          {!!navigator.mediaDevices?.getDisplayMedia && (
+            outgoingStream ? (
+              <button
+                type="button"
+                onClick={onStopScreenShare}
+                className="btn-icon h-7 w-auto px-2 gap-1 text-[11px]"
+                style={{ color: '#FCA5A5', backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }}
+                aria-label="Stop sharing screen"
+              >
+                <MonitorOff className="h-3 w-3" />
+                <span className="hidden sm:inline">Stop</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onStartScreenShare}
+                className="btn-secondary h-7 w-auto px-2 gap-1 text-[11px]"
+                aria-label="Share screen"
+              >
+                <Monitor className="h-3 w-3" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+            )
           )}
         </div>
-
-        {/* Recent videos */}
         {recentVideos?.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {recentVideos.slice(0, 4).map((url) => (
@@ -345,8 +350,6 @@ export default function VideoPlayer({
             ))}
           </div>
         )}
-
-        {/* Error */}
         {loadError && (
           <div
             className="rounded-md px-3 py-2 text-xs"
@@ -360,42 +363,30 @@ export default function VideoPlayer({
           </div>
         )}
       </div>
-
-      {/* ── Player surface ──────────────────────────────────────────────── */}
-      {/*
-       * flex-1 + min-h-0: fills remaining vertical space.
-       * The `ref={containerRef}` wraps this for fullscreen.
-       */}
       <div
         ref={containerRef}
         className={`group relative flex flex-1 min-h-0 min-w-0 items-center justify-center overflow-hidden bg-black ${
           isFullscreen ? 'fixed inset-0 z-50' : ''
         }`}
       >
-        {/* Empty state */}
         {!source && (
-          <div className="flex flex-col items-center gap-3 text-center px-6">
-            <div
-              className="flex h-16 w-16 items-center justify-center rounded-2xl"
-              style={{ backgroundColor: '#161820', border: '1px solid #2A2D3A' }}
-            >
-              <Film className="h-8 w-8 text-text-muted" />
+          <div className="flex flex-col items-center justify-center h-full w-full bg-[#090A0F] absolute inset-0">
+            <div className="relative flex items-center justify-center h-24 w-24 mb-6">
+               <div className="absolute inset-0 rounded-full bg-accent-blue/5 animate-[ping_3s_ease-in-out_infinite]" />
+               <div className="absolute inset-2 rounded-full bg-accent-blue/10 animate-[ping_3s_ease-in-out_infinite_500ms]" />
+               <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-blue/20 to-[#161820] border border-accent-blue/30 backdrop-blur-sm shadow-2xl">
+                 <Film className="h-8 w-8 text-accent-blue" />
+               </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-text-secondary">No video loaded</p>
-              <p className="text-xs text-text-muted mt-0.5">
-                Paste a video link above and press Load.
-              </p>
-            </div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-white to-text-muted bg-clip-text text-transparent mb-2 tracking-tight">Ready to watch?</h2>
+            <p className="text-xs text-text-muted max-w-sm text-center leading-relaxed">
+              Paste a YouTube, Vimeo, or direct video link in the bar above to start syncing with the room.
+            </p>
           </div>
         )}
-
-        {/* Engine */}
         {source && (
           <>
             {engineNode}
-
-            {/* Loading spinner */}
             {isLoading && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div
@@ -404,8 +395,36 @@ export default function VideoPlayer({
                 />
               </div>
             )}
-
-            {/* ── Screen share controls ── */}
+            <div className="absolute inset-0 z-0" onDoubleClick={toggleFullscreen} />
+            <div
+              className="absolute inset-0 z-0 transition-all duration-500 ease-out"
+              style={{ opacity: !localPlaying || loadError || autoplayBlocked ? 1 : 0 }}
+            >
+              <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/80 to-transparent pointer-events-none" />
+              <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                {autoplayBlocked && !loadError && (
+                  <div className="pointer-events-auto flex flex-col items-center p-6 bg-black/80 rounded-2xl backdrop-blur-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300">
+                    <div className="bg-accent-blue/20 p-3 rounded-full mb-3">
+                      <VolumeX className="h-8 w-8 text-accent-blue" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white mb-1">Autoplay Blocked</h3>
+                    <p className="text-sm text-text-muted mb-4 max-w-[250px] text-center">
+                      Your browser prevented the video from playing automatically.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setAutoplayBlocked(false)
+                        engineRef.current?.play()
+                      }}
+                      className="btn-primary w-full py-2.5 text-sm"
+                    >
+                      Click to Unmute & Play
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
             {source.type === 'screenshare' && (
               <div
                 className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 pb-3 pt-8 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -571,4 +590,4 @@ export default function VideoPlayer({
       </div>
     </div>
   )
-}
+})

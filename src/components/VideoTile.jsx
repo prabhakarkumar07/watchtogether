@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { MicOff, Pin, PinOff, VideoOff, Crown } from 'lucide-react'
+import { MicOff, Pin, PinOff, VideoOff, Crown, VolumeX, Volume2, Volume1 } from 'lucide-react'
 
 const VideoTile = React.memo(function VideoTile({
   stream,
@@ -17,11 +17,13 @@ const VideoTile = React.memo(function VideoTile({
 }) {
   const videoRef = useRef(null)
   const [videoVisible, setVideoVisible] = useState(false)
+  const [localVolume, setLocalVolume] = useState(1)
 
   useEffect(() => {
     const video = videoRef.current
     if (!video || !stream) { setVideoVisible(false); return }
     video.srcObject = stream
+    video.volume = isLocal ? 0 : localVolume
     video.play().catch(() => {})
 
     // Check if there's actually an enabled video track
@@ -60,7 +62,14 @@ const VideoTile = React.memo(function VideoTile({
     )
   }, [isCamOn, isLocal, stream])
 
+  useEffect(() => {
+    if (videoRef.current && !isLocal) {
+      videoRef.current.volume = localVolume
+    }
+  }, [localVolume, isLocal])
+
   const showVideo = stream && videoVisible
+  const VolumeIcon = localVolume === 0 ? VolumeX : localVolume < 0.5 ? Volume1 : Volume2
 
   return (
     <div
@@ -142,6 +151,28 @@ const VideoTile = React.memo(function VideoTile({
         >
           {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
         </button>
+      )}
+
+      {/* Hover: volume slider (remote only) */}
+      {!isLocal && (
+        <div className="absolute top-1.5 left-1.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/60 backdrop-blur-sm rounded-md px-1.5 py-1">
+          <button
+            onClick={() => setLocalVolume(v => v === 0 ? 1 : 0)}
+            className="text-white hover:text-accent-blue transition-colors"
+          >
+            <VolumeIcon className="h-3.5 w-3.5" />
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.05}
+            value={localVolume}
+            onChange={(e) => setLocalVolume(Number(e.target.value))}
+            className="h-1 w-12 cursor-pointer appearance-none rounded-full accent-accent-blue bg-white/20"
+            title="Local Volume"
+          />
+        </div>
       )}
     </div>
   )

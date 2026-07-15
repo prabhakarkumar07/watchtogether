@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { AlertTriangle, Layout, Monitor, Sidebar, Square, Video } from 'lucide-react'
 import Header from './components/Header.jsx'
 import RoomPanel from './components/RoomPanel.jsx'
@@ -10,7 +10,7 @@ import { useTheme } from './hooks/useTheme.js'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
 import { useRoom } from './hooks/useRoom.js'
 import { useToast } from './context/ToastContext.jsx'
-import { STORAGE_KEYS, addRecentVideo } from './lib/storage.js'
+import { STORAGE_KEYS, addRecentVideo, readStorage, writeStorage } from './lib/storage.js'
 import { useResizablePanel } from './hooks/useResizablePanel.js'
 import EffectsOverlay from './components/EffectsOverlay.jsx'
 import EffectsPicker from './components/EffectsPicker.jsx'
@@ -67,11 +67,30 @@ export default function App() {
     if (!autoJoinAttempted.current) {
       autoJoinAttempted.current = true
       const targetRoom = initialRoomFromUrl || lastRoom
-      if (targetRoom && room.status === 'idle') room.joinRoom(targetRoom)
+      const wasHost = readStorage(STORAGE_KEYS.WAS_HOST, false)
+
+      if (targetRoom && room.status === 'idle') {
+        if (wasHost && !initialRoomFromUrl) {
+          room.createRoom(targetRoom)
+        } else {
+          room.joinRoom(targetRoom)
+        }
+      }
     }
   }, [initialRoomFromUrl, lastRoom, room])
 
-  const handleCopyLink = async () => {
+  const autoCallJoinAttempted = useRef(false)
+  useEffect(() => {
+    if (room.status === 'connected' && !autoCallJoinAttempted.current) {
+      autoCallJoinAttempted.current = true
+      const wasInCall = readStorage(STORAGE_KEYS.WAS_IN_CALL, false)
+      if (wasInCall && !room.localCallStream) {
+        room.startVideoCall(true) // true = autoJoined (starts disabled)
+      }
+    }
+  }, [room.status, room.localCallStream, room.startVideoCall])
+
+  const handleCopyLink = useCallback(async () => {
     const link = `${window.location.origin}${window.location.pathname}?room=${room.roomCode}`
     try {
       await navigator.clipboard.writeText(link)
@@ -79,12 +98,22 @@ export default function App() {
     } catch {
       toast.error('Could not copy — paste the URL manually.')
     }
-  }
+  }, [room.roomCode, toast])
 
-  const handleLoadVideo = (parsed) => {
+  const handleLeaveRoom = useCallback(() => {
+    setLastRoom('')
+    writeStorage(STORAGE_KEYS.WAS_HOST, false)
+    writeStorage(STORAGE_KEYS.WAS_IN_CALL, false)
+    writeStorage(STORAGE_KEYS.VIDEO_STATE, { source: null, isPlaying: false, playbackRate: 1, time: 0, updatedAt: Date.now() })
+    writeStorage(STORAGE_KEYS.CHAT_HISTORY, [])
+    window.history.replaceState({}, '', window.location.pathname)
+    room.leaveRoom()
+  }, [setLastRoom, room.leaveRoom])
+
+  const handleLoadVideo = useCallback((parsed) => {
     room.loadVideo(parsed)
     if (parsed?.url) setRecentVideos(addRecentVideo(parsed.url))
-  }
+  }, [room.loadVideo, setRecentVideos])
 
   const hasVideoCall = room.localCallStream || room.remoteCallStreams?.size > 0
   const hasLocalCall = !!room.localCallStream
@@ -152,6 +181,7 @@ export default function App() {
           onUsernameChange={setUsername}
           onCreateRoom={room.createRoom}
           onJoinRoom={room.joinRoom}
+          initialJoinCode={initialRoomFromUrl || lastRoom}
         />
       </>
     )
@@ -179,7 +209,7 @@ export default function App() {
         roomStatus={room.status}
         roomCode={room.roomCode}
         onCopyLink={handleCopyLink}
-        onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
+        onLeaveRoom={handleLeaveRoom}
         activeLayout={activeLayout}
         setActiveLayout={setActiveLayout}
         layouts={LAYOUTS}
@@ -206,7 +236,7 @@ export default function App() {
                 initialJoinCode={initialRoomFromUrl}
                 onCreateRoom={room.createRoom}
                 onJoinRoom={room.joinRoom}
-                onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
+                onLeaveRoom={handleLeaveRoom}
                 onCopyLink={handleCopyLink}
               />
 
@@ -394,7 +424,7 @@ export default function App() {
             initialJoinCode={initialRoomFromUrl}
             onCreateRoom={room.createRoom}
             onJoinRoom={room.joinRoom}
-            onLeaveRoom={() => { setLastRoom(''); room.leaveRoom() }}
+            onLeaveRoom={handleLeaveRoom}
             onCopyLink={handleCopyLink}
           />
         </div>

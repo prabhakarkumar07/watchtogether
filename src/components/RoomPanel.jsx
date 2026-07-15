@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Copy, DoorOpen, Loader2, LogOut, User } from 'lucide-react'
 
-export default function RoomPanel({
+export default React.memo(function RoomPanel({
   username,
   onUsernameChange,
   status,
@@ -157,4 +157,4 @@ export default function RoomPanel({
       </div>
     </div>
   )
-}
+})

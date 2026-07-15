@@ -71,8 +71,8 @@ const WHY = [
   { icon: Star,         label: 'Multiple layout modes', color: '#EC4899' },
 ]
 
-export default function LandingPage({ onCreateRoom, onJoinRoom, username, onUsernameChange }) {
-  const [joinCode, setJoinCode] = useState('')
+export default function LandingPage({ onCreateRoom, onJoinRoom, username, onUsernameChange, initialJoinCode }) {
+  const [joinCode, setJoinCode] = useState(initialJoinCode || '')
   const [isCreating, setIsCreating] = useState(false)
   const [isJoining, setIsJoining] = useState(false)
   const joinInputRef = useRef(null)

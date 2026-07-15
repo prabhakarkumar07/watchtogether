@@ -98,7 +98,7 @@ const ChatMessage = React.memo(function ChatMessage({ m, selfName }) {
   )
 })
 
-export default function Chat({ messages, onSend, selfName }) {
+export default React.memo(function Chat({ messages, onSend, selfName }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const scrollRef = useRef(null)
@@ -109,6 +109,13 @@ export default function Chat({ messages, onSend, selfName }) {
     const grouped = groupMessages(messages)
     return grouped.slice(-MAX_VISIBLE_MESSAGES)
   }, [messages])
+
+  useEffect(() => {
+    // Attempt auto-focus on mount, ignoring errors if mobile keyboards block it
+    setTimeout(() => {
+      inputRef.current?.focus({ preventScroll: true })
+    }, 50)
+  }, [])
 
   useEffect(() => {
     const scroller = scrollRef.current
@@ -242,4 +249,4 @@ export default function Chat({ messages, onSend, selfName }) {
       </div>
     </section>
   )
-}
+})

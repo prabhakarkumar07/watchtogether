@@ -9,7 +9,7 @@ const VimeoEngine = forwardRef(function VimeoEngine(
   const playerRef = useRef(null)
 
   useImperativeHandle(ref, () => ({
-    play: () => playerRef.current?.play().catch(() => {}),
+    play: () => playerRef.current?.play(),
     pause: () => playerRef.current?.pause().catch(() => {}),
     seekTo: (time) => playerRef.current?.setCurrentTime(time).catch(() => {}),
     setPlaybackRate: (rate) => playerRef.current?.setPlaybackRate(rate).catch(() => {}),

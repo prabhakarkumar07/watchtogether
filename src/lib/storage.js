@@ -9,6 +9,12 @@ export const STORAGE_KEYS = {
   RECENT_VIDEOS: 'wt_recent_videos',
   VOLUME: 'wt_volume',
   PLAYBACK_SPEED: 'wt_playback_speed',
+  MIC_STATE: 'wt_mic_state',
+  CAM_STATE: 'wt_cam_state',
+  WAS_IN_CALL: 'wt_was_in_call',
+  WAS_HOST: 'wt_was_host',
+  VIDEO_STATE: 'wt_video_state',
+  CHAT_HISTORY: 'wt_chat_history',
 }
 
 export function readStorage(key, fallback = null) {
