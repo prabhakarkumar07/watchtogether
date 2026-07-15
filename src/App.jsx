@@ -19,7 +19,7 @@ import VideoGrid from './components/VideoGrid.jsx'
 import { Grid } from 'lucide-react'
 
 function isBrowserSupported() {
-  return typeof window !== 'undefined' && !!window.RTCPeerConnection && !!window.localStorage
+  return typeof window !== 'undefined' && (!!window.RTCPeerConnection || !!window.webkitRTCPeerConnection) && !!window.localStorage
 }
 
 /*
@@ -296,22 +296,41 @@ export default function App() {
               isCamOn={room.isCamOn}
             />
           ) : (
-            <VideoPlayer
-              videoState={room.videoState}
-              onLoadVideo={handleLoadVideo}
-              onPlay={room.play}
-              onPause={room.pause}
-              onSeek={room.seek}
-              onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
-              recentVideos={recentVideos}
-              savedVolume={savedVolume}
-              savedSpeed={savedSpeed}
-              onVolumeChange={setSavedVolume}
-              incomingStream={room.incomingStream}
-              outgoingStream={room.outgoingStream}
-              onStartScreenShare={room.startScreenShare}
-              onStopScreenShare={room.stopScreenShare}
-            />
+            <>
+              {/* Mobile-only VideoGrid fallback when not in grid layout but no video is playing */}
+              {hasVideoCall && !room.videoState?.source && (
+                <div className="lg:hidden flex flex-1 flex-col h-full w-full">
+                  <VideoGrid
+                    localStream={room.localCallStream}
+                    remoteStreams={room.remoteCallStreams}
+                    participants={room.participants}
+                    selfId={room.selfId}
+                    isMicOn={room.isMicOn}
+                    isCamOn={room.isCamOn}
+                  />
+                </div>
+              )}
+              
+              {/* Desktop always shows player; Mobile shows player if video source exists or no call active */}
+              <div className={`flex flex-col flex-1 h-full w-full ${hasVideoCall && !room.videoState?.source ? 'hidden lg:flex' : 'flex'}`}>
+                <VideoPlayer
+                  videoState={room.videoState}
+                  onLoadVideo={handleLoadVideo}
+                  onPlay={room.play}
+                  onPause={room.pause}
+                  onSeek={room.seek}
+                  onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
+                  recentVideos={recentVideos}
+                  savedVolume={savedVolume}
+                  savedSpeed={savedSpeed}
+                  onVolumeChange={setSavedVolume}
+                  incomingStream={room.incomingStream}
+                  outgoingStream={room.outgoingStream}
+                  onStartScreenShare={room.startScreenShare}
+                  onStopScreenShare={room.stopScreenShare}
+                />
+              </div>
+            </>
           )}
         </div>
 
