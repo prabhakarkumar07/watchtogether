@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react'
+import { Mic, MicOff, PhoneOff, Video, VideoOff } from 'lucide-react'
 import VideoTile from './VideoTile.jsx'
 
 /**
@@ -30,7 +31,13 @@ export default React.memo(function VideoGrid({
   participants,
   selfId,
   isMicOn,
-  isCamOn
+  isCamOn,
+  onToggleMic,
+  onToggleCam,
+  onHangUp,
+  canJoinCall,
+  hasLocalCall,
+  onJoinCall,
 }) {
   const [pinnedId, setPinnedId] = useState(null)
   const containerRef = useRef(null)
@@ -46,8 +53,13 @@ export default React.memo(function VideoGrid({
   const hasAnyStream = localStream || remoteStreams?.size > 0
   if (!hasAnyStream) {
     return (
-      <div className="flex flex-1 items-center justify-center text-text-muted">
-        Waiting for others to join video call...
+      <div className="flex flex-col flex-1 items-center justify-center gap-4 text-text-muted">
+        <p>Waiting for others to join video call...</p>
+        {!hasLocalCall && canJoinCall && (
+          <button onClick={onJoinCall} className="btn-primary">
+            <Video className="h-4 w-4" /> Join Call
+          </button>
+        )}
       </div>
     )
   }
@@ -85,6 +97,54 @@ export default React.memo(function VideoGrid({
 
   const count = sortedTiles.length
   
+  const renderControls = () => {
+    if (!hasLocalCall && canJoinCall) {
+      return (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full bg-black/60 px-4 py-2 backdrop-blur border border-white/10 z-10 shadow-2xl">
+          <button onClick={onJoinCall} className="btn-primary rounded-full px-6 py-2 shadow-lg">
+            <Video className="h-4 w-4 mr-2" /> Join Call
+          </button>
+        </div>
+      )
+    }
+
+    if (hasLocalCall) {
+      return (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-[#161820]/80 px-6 py-3 backdrop-blur border border-white/10 z-10 shadow-2xl">
+          <button
+            type="button"
+            onClick={onToggleMic}
+            className="flex items-center justify-center h-12 w-12 rounded-full transition-all"
+            style={isMicOn ? { backgroundColor: 'rgba(255,255,255,0.1)' } : { backgroundColor: '#ef4444', color: 'white' }}
+            title={isMicOn ? 'Mute' : 'Unmute'}
+          >
+            {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+          </button>
+          <button
+            type="button"
+            onClick={onToggleCam}
+            className="flex items-center justify-center h-12 w-12 rounded-full transition-all"
+            style={isCamOn ? { backgroundColor: 'rgba(255,255,255,0.1)' } : { backgroundColor: '#ef4444', color: 'white' }}
+            title={isCamOn ? 'Camera off' : 'Camera on'}
+          >
+            {isCamOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+          </button>
+          <div className="w-px h-8 bg-white/10 mx-1" />
+          <button
+            type="button"
+            onClick={onHangUp}
+            className="flex items-center justify-center h-12 w-16 rounded-full bg-[#ef4444] hover:bg-[#dc2626] transition-colors text-white shadow-lg"
+            title="Hang Up"
+          >
+            <PhoneOff className="h-5 w-5" />
+          </button>
+        </div>
+      )
+    }
+
+    return null
+  }
+  
   // If we have a pinned item and multiple people, use a spotlight layout:
   // Pinned item takes up the main area, others are in a strip at the bottom/side.
   if (pinnedId && count > 1) {
@@ -92,7 +152,7 @@ export default React.memo(function VideoGrid({
     const otherTiles = sortedTiles.slice(1)
     
     return (
-      <div className="flex flex-col h-full w-full gap-2 p-2 bg-[#090A0F]">
+      <div className="flex flex-col h-full w-full gap-2 p-2 bg-[#090A0F] relative">
         {/* Main Pinned Video */}
         <div className="flex-1 min-h-0 relative rounded-lg overflow-hidden border border-app-border">
           <VideoTile
@@ -110,7 +170,7 @@ export default React.memo(function VideoGrid({
         </div>
         
         {/* Strip of other participants */}
-        <div className="flex gap-2 h-32 shrink-0 overflow-x-auto video-grid-scroll">
+        <div className="flex gap-2 h-32 shrink-0 overflow-x-auto video-grid-scroll z-0">
           {otherTiles.map(tile => (
             <div key={tile.id} className="w-48 shrink-0 rounded-lg overflow-hidden border border-app-border">
               <VideoTile
@@ -128,6 +188,8 @@ export default React.memo(function VideoGrid({
             </div>
           ))}
         </div>
+        
+        {renderControls()}
       </div>
     )
   }
@@ -139,7 +201,7 @@ export default React.memo(function VideoGrid({
     <div 
       ref={containerRef}
       onDoubleClick={toggleFullscreen}
-      className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden"
+      className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden relative"
     >
       <div 
         className="flex-1 min-h-0 flex flex-wrap justify-center content-center items-center gap-2 w-full h-full"
@@ -161,6 +223,8 @@ export default React.memo(function VideoGrid({
           </div>
         ))}
       </div>
+      
+      {renderControls()}
     </div>
   )
 })

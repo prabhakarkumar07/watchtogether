@@ -324,6 +324,12 @@ export default function App() {
               selfId={room.selfId}
               isMicOn={room.isMicOn}
               isCamOn={room.isCamOn}
+              onToggleMic={room.toggleMic}
+              onToggleCam={room.toggleCam}
+              onHangUp={room.stopVideoCall}
+              canJoinCall={canJoinCall}
+              hasLocalCall={hasLocalCall}
+              onJoinCall={room.startVideoCall}
             />
           ) : (
             <>
@@ -337,6 +343,12 @@ export default function App() {
                     selfId={room.selfId}
                     isMicOn={room.isMicOn}
                     isCamOn={room.isCamOn}
+                    onToggleMic={room.toggleMic}
+                    onToggleCam={room.toggleCam}
+                    onHangUp={room.stopVideoCall}
+                    canJoinCall={canJoinCall}
+                    hasLocalCall={hasLocalCall}
+                    onJoinCall={room.startVideoCall}
                   />
                 </div>
               )}
