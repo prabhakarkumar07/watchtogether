@@ -7,28 +7,28 @@ export default {
       colors: {
         // App surfaces
         app: {
-          bg:     '#090A0F',
-          panel:  '#0F1117',
-          raised: '#161820',
-          hover:  '#1C1E28',
-          border: '#232530',
-          'border-subtle': '#1A1C26',
+          bg:     '#0A0A0A',
+          panel:  '#111112',
+          raised: '#161618',
+          hover:  '#1C1C1F',
+          border: '#232326',
+          'border-subtle': '#1A1A1D',
         },
         // Accent colors
         accent: {
           blue:   '#3B82F6',
           'blue-dim': '#1D4ED8',
           green:  '#22C55E',
-          amber:  '#F59E0B',
+          amber:  '#FFB627',
           red:    '#EF4444',
           violet: '#8B5CF6',
         },
         // Text hierarchy
         text: {
-          primary:   '#E8E9F0',
-          secondary: '#8B8FA8',
-          muted:     '#545769',
-          inverse:   '#090A0F',
+          primary:   '#F5EFE6',
+          secondary: '#C4C6D6',
+          muted:     '#9A9B9E',
+          inverse:   '#0A0A0A',
         },
         // Status
         status: {
@@ -57,8 +57,9 @@ export default {
         },
       },
       fontFamily: {
-        display: ['"Inter"', 'sans-serif'],
-        body:    ['"Inter"', 'sans-serif'],
+        display: ['"Bricolage Grotesque"', 'sans-serif'],
+        body:    ['"Bricolage Grotesque"', 'sans-serif'],
+        serif:   ['"Instrument Serif"', 'serif'],
         mono:    ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       fontSize: {

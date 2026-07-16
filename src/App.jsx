@@ -190,8 +190,8 @@ export default function App() {
   // ── Connecting spinner ────────────────────────────────────────────────
   if (room.status === 'connecting') {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4" style={{ backgroundColor: '#090A0F' }}>
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-blue-500" />
+      <div className="flex h-full flex-col items-center justify-center gap-4" style={{ backgroundColor: '#0A0A0A' }}>
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent-amber" />
         <p className="text-sm font-medium" style={{ color: 'rgba(232,233,240,0.5)' }}>Connecting…</p>
       </div>
     )
@@ -222,7 +222,7 @@ export default function App() {
         {showLeftSidebar && (
           <aside
             className="hidden lg:flex flex-col shrink-0 border-r border-app-border relative overflow-visible"
-            style={{ backgroundColor: '#0C0D13', width: leftPanel.width }}
+            style={{ backgroundColor: '#111112', width: leftPanel.width }}
           >
             {/* Scrollable content area */}
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll">
@@ -404,18 +404,18 @@ export default function App() {
 
       {/* Mobile chat/people panels */}
       {room.status === 'connected' && mobileTab === 'chat' && (
-        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#0C0D13' }}>
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#111112' }}>
           <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
         </div>
       )}
       {room.status === 'connected' && mobileTab === 'people' && (
-        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll" style={{ backgroundColor: '#0C0D13' }}>
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll" style={{ backgroundColor: '#111112' }}>
           <Participants participants={room.participants} selfId={room.selfId} />
         </div>
       )}
       {/* Mobile: not connected — room panel */}
       {room.status !== 'connected' && (
-        <div className="lg:hidden flex flex-col overflow-y-auto flex-1 p-3" style={{ backgroundColor: '#0C0D13' }}>
+        <div className="lg:hidden flex flex-col overflow-y-auto flex-1 p-3" style={{ backgroundColor: '#111112' }}>
           <RoomPanel
             username={username}
             onUsernameChange={setUsername}
@@ -446,7 +446,7 @@ function RightPanel({ room, username, width, onStartResizing }) {
   return (
     <aside
       className="hidden lg:flex flex-col shrink-0 border-l border-app-border relative overflow-visible"
-      style={{ backgroundColor: '#0C0D13', width }}
+      style={{ backgroundColor: '#111112', width }}
     >
       {/* Resize handle */}
       <div

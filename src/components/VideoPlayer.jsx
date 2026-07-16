@@ -372,10 +372,10 @@ export default React.memo(function VideoPlayer({
         {!source && (
           <div className="flex flex-col items-center justify-center h-full w-full bg-[#090A0F] absolute inset-0">
             <div className="relative flex items-center justify-center h-24 w-24 mb-6">
-               <div className="absolute inset-0 rounded-full bg-accent-blue/5 animate-[ping_3s_ease-in-out_infinite]" />
-               <div className="absolute inset-2 rounded-full bg-accent-blue/10 animate-[ping_3s_ease-in-out_infinite_500ms]" />
-               <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-blue/20 to-[#161820] border border-accent-blue/30 backdrop-blur-sm shadow-2xl">
-                 <Film className="h-8 w-8 text-accent-blue" />
+               <div className="absolute inset-0 rounded-full bg-accent-amber/5 animate-[ping_3s_ease-in-out_infinite]" />
+               <div className="absolute inset-2 rounded-full bg-accent-amber/10 animate-[ping_3s_ease-in-out_infinite_500ms]" />
+               <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-amber/20 to-[#161820] border border-accent-amber/30 backdrop-blur-sm shadow-2xl">
+                 <Film className="h-8 w-8 text-accent-amber" />
                </div>
             </div>
             <h2 className="text-xl font-bold bg-gradient-to-r from-white to-text-muted bg-clip-text text-transparent mb-2 tracking-tight">Ready to watch?</h2>
@@ -391,7 +391,7 @@ export default React.memo(function VideoPlayer({
               <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm">
                 <div
                   className="h-10 w-10 animate-spin rounded-full border-2"
-                  style={{ borderColor: '#2A2D3A', borderTopColor: '#3B82F6' }}
+                  style={{ borderColor: '#2A2D3A', borderTopColor: '#FFB627' }}
                 />
               </div>
             )}
@@ -405,8 +405,8 @@ export default React.memo(function VideoPlayer({
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 {autoplayBlocked && !loadError && (
                   <div className="pointer-events-auto flex flex-col items-center p-6 bg-black/80 rounded-2xl backdrop-blur-md border border-white/10 shadow-2xl animate-in zoom-in-95 duration-300">
-                    <div className="bg-accent-blue/20 p-3 rounded-full mb-3">
-                      <VolumeX className="h-8 w-8 text-accent-blue" />
+                    <div className="bg-accent-amber/20 p-3 rounded-full mb-3">
+                      <VolumeX className="h-8 w-8 text-accent-amber" />
                     </div>
                     <h3 className="text-lg font-bold text-white mb-1">Autoplay Blocked</h3>
                     <p className="text-sm text-text-muted mb-4 max-w-[250px] text-center">
@@ -444,7 +444,7 @@ export default React.memo(function VideoPlayer({
                     min={0} max={1} step={0.05}
                     value={volume}
                     onChange={(e) => setVolume(Number(e.target.value))}
-                    className="h-1 w-20 cursor-pointer appearance-none rounded-full accent-accent-blue"
+                    className="h-1 w-20 cursor-pointer appearance-none rounded-full accent-accent-amber"
                     style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                     aria-label="Volume"
                   />
@@ -491,7 +491,7 @@ export default React.memo(function VideoPlayer({
                   onKeyUp={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') commitSeek(Number(e.target.value))
                   }}
-                  className="h-1 w-full cursor-pointer appearance-none rounded-full accent-accent-blue"
+                  className="h-1 w-full cursor-pointer appearance-none rounded-full accent-accent-amber"
                   style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                   aria-label="Seek"
                 />
@@ -533,7 +533,7 @@ export default React.memo(function VideoPlayer({
                         min={0} max={1} step={0.05}
                         value={volume}
                         onChange={(e) => setVolume(Number(e.target.value))}
-                        className="h-1 w-20 cursor-pointer appearance-none rounded-full accent-accent-blue"
+                        className="h-1 w-20 cursor-pointer appearance-none rounded-full accent-accent-amber"
                         style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}
                         aria-label="Volume"
                       />

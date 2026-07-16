@@ -36,16 +36,16 @@ export default React.memo(function Header({
   return (
     <header
       className="flex h-9 shrink-0 items-center justify-between gap-3 px-3 border-b border-app-border z-30"
-      style={{ backgroundColor: '#0C0D13' }}
+      style={{ backgroundColor: '#0A0A0A' }}
     >
       {/* ── Brand ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 shrink-0">
         <div
           className="flex h-6 w-6 items-center justify-center rounded shrink-0"
-          style={{ backgroundColor: '#E8E9F0' }}
+          style={{ backgroundColor: '#FFB627' }}
           aria-hidden="true"
         >
-          <Clapperboard className="h-3.5 w-3.5" style={{ color: '#090A0F' }} />
+          <Clapperboard className="h-3.5 w-3.5" style={{ color: '#0A0A0A' }} />
         </div>
         <span className="text-xs font-semibold text-text-primary tracking-tight hidden sm:block">
           Watch Together
@@ -62,7 +62,7 @@ export default React.memo(function Header({
             </span>
             <button
               className="flex items-center gap-1.5 rounded px-2 py-0.5 group transition-colors"
-              style={{ backgroundColor: '#161820', border: '1px solid #2A2D3A' }}
+              style={{ backgroundColor: 'rgba(74, 53, 20, 0.4)', border: '1px dashed rgba(255, 182, 39, 0.4)' }}
               onClick={onCopyLink}
               title="Click to copy room link"
               aria-label="Copy room link"

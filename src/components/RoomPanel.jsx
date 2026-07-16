@@ -43,7 +43,7 @@ export default React.memo(function RoomPanel({
           </p>
           <div
             className="flex items-center justify-between gap-2 rounded-md px-3 py-2"
-            style={{ backgroundColor: '#090A0F', border: '1px solid #2A2D3A' }}
+            style={{ backgroundColor: 'rgba(74, 53, 20, 0.4)', border: '1px dashed rgba(255, 182, 39, 0.4)' }}
           >
             <span className="font-mono text-sm font-semibold tracking-[0.2em] text-text-primary">
               {roomCode}

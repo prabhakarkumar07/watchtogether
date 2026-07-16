@@ -2,11 +2,11 @@ import React, { useState } from 'react'
 import { Crown, Mic, MicOff, Users, Video, VideoOff } from 'lucide-react'
 
 const AVATAR_PALETTE = [
-  { bg: '#2D1B69', text: '#A78BFA' },
-  { bg: '#1A3A2A', text: '#4ADE80' },
-  { bg: '#3B1A1A', text: '#FCA5A5' },
-  { bg: '#1A2D3B', text: '#60A5FA' },
-  { bg: '#2D2B1A', text: '#FCD34D' },
+  { bg: '#4a3514', text: '#FFB627' },
+  { bg: '#4a1414', text: '#FF4747' },
+  { bg: '#2a2620', text: '#d6c7b3' },
+  { bg: '#263318', text: '#a6db65' },
+  { bg: '#14363d', text: '#63c9db' },
 ]
 
 function colorFor(id = '') {

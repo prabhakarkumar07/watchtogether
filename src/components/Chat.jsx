@@ -22,11 +22,11 @@ function groupMessages(messages) {
 }
 
 const AVATAR_PALETTE = [
-  { bg: '#2D1B69', text: '#A78BFA' },
-  { bg: '#1A3A2A', text: '#4ADE80' },
-  { bg: '#3B1A1A', text: '#FCA5A5' },
-  { bg: '#1A2D3B', text: '#60A5FA' },
-  { bg: '#2D2B1A', text: '#FCD34D' },
+  { bg: '#4a3514', text: '#FFB627' },
+  { bg: '#4a1414', text: '#FF4747' },
+  { bg: '#2a2620', text: '#d6c7b3' },
+  { bg: '#263318', text: '#a6db65' },
+  { bg: '#14363d', text: '#63c9db' },
 ]
 
 function colorFor(name = '') {
@@ -87,8 +87,8 @@ const ChatMessage = React.memo(function ChatMessage({ m, selfName }) {
           className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
           style={
             isSelf
-              ? { backgroundColor: '#1D4ED8', color: '#EFF6FF' }
-              : { backgroundColor: '#161820', color: '#D4D6E4', border: '1px solid #2A2D3A' }
+              ? { backgroundColor: '#FFB627', color: '#0A0A0A' }
+              : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#F5EFE6', border: '1px solid rgba(255,255,255,0.05)' }
           }
         >
           {m.text}
