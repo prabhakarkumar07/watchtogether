@@ -5,19 +5,23 @@ import VideoTile from './VideoTile.jsx'
  * Calculates optimal grid dimensions to fit N items into a container
  * while maintaining the aspect ratio as closely as possible.
  */
-function calculateGrid(count) {
-  if (count <= 1) return { cols: 1, rows: 1 }
-  if (count === 2) return { cols: 2, rows: 1 }
-  if (count <= 4) return { cols: 2, rows: 2 }
-  if (count <= 6) return { cols: 3, rows: 2 }
-  if (count <= 9) return { cols: 3, rows: 3 }
-  if (count <= 12) return { cols: 4, rows: 3 }
-  if (count <= 16) return { cols: 4, rows: 4 }
+function getFlexStyle(count) {
+  if (count <= 1) return { width: '100%', height: '100%' }
+  if (count === 2) return { width: 'calc(50% - 4px)', height: '100%' }
+  if (count <= 4) return { width: 'calc(50% - 4px)', height: 'calc(50% - 4px)' }
+  if (count <= 6) return { width: 'calc(33.333% - 5.34px)', height: 'calc(50% - 4px)' }
+  if (count <= 9) return { width: 'calc(33.333% - 5.34px)', height: 'calc(33.333% - 5.34px)' }
+  if (count <= 12) return { width: 'calc(25% - 6px)', height: 'calc(33.333% - 5.34px)' }
+  if (count <= 16) return { width: 'calc(25% - 6px)', height: 'calc(25% - 6px)' }
   
-  // For very large numbers, keep it somewhat square but favor width
   const cols = Math.ceil(Math.sqrt(count))
   const rows = Math.ceil(count / cols)
-  return { cols, rows }
+  const gapW = ((cols - 1) * 8) / cols
+  const gapH = ((rows - 1) * 8) / rows
+  return { 
+    width: `calc(${100/cols}% - ${gapW}px)`, 
+    height: `calc(${100/rows}% - ${gapH}px)` 
+  }
 }
 
 export default React.memo(function VideoGrid({
@@ -129,7 +133,7 @@ export default React.memo(function VideoGrid({
   }
 
   // Normal Grid Layout
-  const grid = calculateGrid(count)
+  const flexStyle = getFlexStyle(count)
   
   return (
     <div 
@@ -138,14 +142,10 @@ export default React.memo(function VideoGrid({
       className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden"
     >
       <div 
-        className="flex-1 min-h-0 grid gap-2 place-content-center w-full h-full"
-        style={{
-          gridTemplateColumns: `repeat(${grid.cols}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${grid.rows}, minmax(0, 1fr))`,
-        }}
+        className="flex-1 min-h-0 flex flex-wrap justify-center content-center items-center gap-2 w-full h-full"
       >
         {sortedTiles.map((tile) => (
-          <div key={tile.id} className="w-full h-full relative rounded-lg overflow-hidden border border-app-border">
+          <div key={tile.id} style={flexStyle} className="relative rounded-lg overflow-hidden border border-app-border shrink-0">
             <VideoTile
               stream={tile.stream}
               label={tile.label}
