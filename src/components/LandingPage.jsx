@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import {
   Play, Users, MessageSquare, Monitor, Lock, Zap,
   Smartphone, RefreshCw, ChevronRight, Github, ArrowRight,
-  CheckCircle2, Star, Wifi, Clock, Globe, ShieldCheck
+  CheckCircle2, Star, Wifi, Clock, Globe, ShieldCheck, Radio
 } from 'lucide-react'
 
 const FEATURES = [
@@ -121,14 +121,11 @@ export default function LandingPage({ onCreateRoom, onJoinRoom, username, onUser
       </nav>
 
       {/* ══ HERO ═════════════════════════════════════════════════════════════ */}
-      <section className="relative mx-auto max-w-[1200px] px-6 pt-24 pb-20 flex flex-col md:flex-row items-center justify-between gap-16 text-left">
+      <section className="relative mx-auto max-w-[1200px] px-6 pt-10 pb-20 flex flex-col md:flex-row items-center justify-between gap-16 text-left">
         
         {/* Left Column */}
         <div className="flex-1 w-full relative z-10">
-          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-accent-amber/30 bg-accent-amber/10 px-3 py-1 text-[10px] font-bold text-accent-amber uppercase tracking-widest">
-             <span className="h-1.5 w-1.5 rounded-full bg-accent-amber animate-pulse" />
-             NOW SCREENING &bull; NO ACCOUNT &bull; FREE FOREVER
-          </div>
+
 
           <h1 className="mb-6 text-5xl font-bold leading-[1.05] tracking-tight text-white md:text-6xl lg:text-[72px]">
             <span className="bg-[#4a3514]/40 px-2 box-decoration-clone leading-relaxed">Roll the film,</span><br/>

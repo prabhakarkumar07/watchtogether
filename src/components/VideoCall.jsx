@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { Mic, MicOff, PhoneOff, Pin, PinOff, Video, VideoOff, Users } from 'lucide-react'
+import Tooltip from './Tooltip.jsx'
 
 import VideoTile from './VideoTile.jsx'
 
@@ -16,6 +17,7 @@ export default React.memo(function VideoCall({
   onHangUp,
   canJoinCall,
   onJoinCall,
+  raisedHands = new Set(),
 }) {
   const [pinnedId, setPinnedId] = useState(null)
 
@@ -66,48 +68,53 @@ export default React.memo(function VideoCall({
         {/* Controls — only show if we're in the call */}
         {localStream && (
           <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onToggleMic}
-              className="btn-icon h-6 w-6"
-              style={!isMicOn ? {
-                backgroundColor: 'rgba(239,68,68,0.15)',
-                color: '#FCA5A5',
-                borderColor: 'rgba(239,68,68,0.3)',
-              } : {}}
-              title={isMicOn ? 'Mute' : 'Unmute'}
-              aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'}
-            >
-              {isMicOn ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
-            </button>
-            <button
-              type="button"
-              onClick={onToggleCam}
-              className="btn-icon h-6 w-6"
-              style={!isCamOn ? {
-                backgroundColor: 'rgba(239,68,68,0.15)',
-                color: '#FCA5A5',
-                borderColor: 'rgba(239,68,68,0.3)',
-              } : {}}
-              title={isCamOn ? 'Camera off' : 'Camera on'}
-              aria-label={isCamOn ? 'Turn off camera' : 'Turn on camera'}
-            >
-              {isCamOn ? <Video className="h-3 w-3" /> : <VideoOff className="h-3 w-3" />}
-            </button>
-            <button
-              type="button"
-              onClick={onHangUp}
-              className="btn-icon h-6 w-6"
-              style={{
-                backgroundColor: 'rgba(239,68,68,0.15)',
-                color: '#FCA5A5',
-                borderColor: 'rgba(239,68,68,0.3)',
-              }}
-              title="End call"
-              aria-label="End call"
-            >
-              <PhoneOff className="h-3 w-3" />
-            </button>
+            <Tooltip content={isMicOn ? 'Mute' : 'Unmute'} position="bottom">
+              <button
+                type="button"
+                onClick={onToggleMic}
+                className="btn-icon h-6 w-6"
+                style={!isMicOn ? {
+                  backgroundColor: 'rgba(239,68,68,0.15)',
+                  color: '#FCA5A5',
+                  borderColor: 'rgba(239,68,68,0.3)',
+                } : {}}
+                aria-label={isMicOn ? 'Mute microphone' : 'Unmute microphone'}
+              >
+                {isMicOn ? <Mic className="h-3 w-3" /> : <MicOff className="h-3 w-3" />}
+              </button>
+            </Tooltip>
+            
+            <Tooltip content={isCamOn ? 'Camera off' : 'Camera on'} position="bottom">
+              <button
+                type="button"
+                onClick={onToggleCam}
+                className="btn-icon h-6 w-6"
+                style={!isCamOn ? {
+                  backgroundColor: 'rgba(239,68,68,0.15)',
+                  color: '#FCA5A5',
+                  borderColor: 'rgba(239,68,68,0.3)',
+                } : {}}
+                aria-label={isCamOn ? 'Turn off camera' : 'Turn on camera'}
+              >
+                {isCamOn ? <Video className="h-3 w-3" /> : <VideoOff className="h-3 w-3" />}
+              </button>
+            </Tooltip>
+
+            <Tooltip content="End call" position="bottom">
+              <button
+                type="button"
+                onClick={onHangUp}
+                className="btn-icon h-6 w-6"
+                style={{
+                  backgroundColor: 'rgba(239,68,68,0.15)',
+                  color: '#FCA5A5',
+                  borderColor: 'rgba(239,68,68,0.3)',
+                }}
+                aria-label="End call"
+              >
+                <PhoneOff className="h-3 w-3" />
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -123,6 +130,7 @@ export default React.memo(function VideoCall({
               isLocal={tile.isLocal}
               isMicOn={tile.isLocal ? isMicOn : true}
               isCamOn={tile.isLocal ? isCamOn : true}
+              isHandRaised={raisedHands.has(tile.id)}
               isPinned={pinnedId === tile.id}
               onPin={totalTiles > 1 ? () => handlePin(tile.id) : undefined}
               className="rounded-none border-none"

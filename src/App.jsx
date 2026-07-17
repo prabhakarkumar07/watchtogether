@@ -16,6 +16,7 @@ import EffectsOverlay from './components/EffectsOverlay.jsx'
 import EffectsPicker from './components/EffectsPicker.jsx'
 import LandingPage from './components/LandingPage.jsx'
 import VideoGrid from './components/VideoGrid.jsx'
+import SettingsModal from './components/SettingsModal.jsx'
 import { Grid } from 'lucide-react'
 
 function isBrowserSupported() {
@@ -47,6 +48,7 @@ export default function App() {
   const [savedVolume, setSavedVolume]   = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed]     = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
   const [activeLayout, setActiveLayout] = useState('classic')
+  const [showSettings, setShowSettings] = useState(false)
 
   const [supported]  = useState(isBrowserSupported)
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
@@ -115,6 +117,11 @@ export default function App() {
     if (parsed?.url) setRecentVideos(addRecentVideo(parsed.url))
   }, [room.loadVideo, setRecentVideos])
 
+  const handleSpeedChange = useCallback((rate, time) => {
+    setSavedSpeed(rate)
+    room.setSpeed(rate, time)
+  }, [setSavedSpeed, room.setSpeed])
+
   const hasVideoCall = room.localCallStream || room.remoteCallStreams?.size > 0
   const hasLocalCall = !!room.localCallStream
   const canJoinCall = !hasLocalCall && room.remoteCallStreams?.size > 0
@@ -139,6 +146,13 @@ export default function App() {
       setPreGridLayout(null)
     }
   }, [room.videoState?.source, activeLayout, preGridLayout, setActiveLayout])
+
+  useEffect(() => {
+    // If video call ends while in grid layout, switch back to classic
+    if (!hasVideoCall && activeLayout === 'grid') {
+      setActiveLayout('classic')
+    }
+  }, [hasVideoCall, activeLayout, setActiveLayout])
 
   // Resizable panels
   const leftPanel = useResizablePanel({
@@ -213,7 +227,13 @@ export default function App() {
         activeLayout={activeLayout}
         setActiveLayout={setActiveLayout}
         layouts={LAYOUTS}
+        onOpenSettings={() => setShowSettings(true)}
+        raisedHands={room.raisedHands}
+        selfId={room.selfId}
+        toggleHand={room.toggleHand}
       />
+
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
 
       {/* ── Main content area ───────────────────────────────────────── */}
       <main className="flex flex-1 min-h-0 overflow-hidden">
@@ -245,6 +265,11 @@ export default function App() {
                 <Participants
                   participants={room.participants}
                   selfId={room.selfId}
+                  isHost={room.isHost}
+                  roomLocked={room.roomLocked}
+                  onToggleLock={room.toggleRoomLock}
+                  onMuteAll={room.muteAll}
+                  raisedHands={room.raisedHands}
                 />
               )}
 
@@ -262,6 +287,7 @@ export default function App() {
                   onHangUp={room.stopVideoCall}
                   canJoinCall={canJoinCall}
                   onJoinCall={room.startVideoCall}
+                  raisedHands={room.raisedHands}
                 />
               )}
             </div>
@@ -330,6 +356,7 @@ export default function App() {
               canJoinCall={canJoinCall}
               hasLocalCall={hasLocalCall}
               onJoinCall={room.startVideoCall}
+              raisedHands={room.raisedHands}
             />
           ) : (
             <>
@@ -349,6 +376,7 @@ export default function App() {
                     canJoinCall={canJoinCall}
                     hasLocalCall={hasLocalCall}
                     onJoinCall={room.startVideoCall}
+                    raisedHands={room.raisedHands}
                   />
                 </div>
               )}
@@ -361,7 +389,7 @@ export default function App() {
                   onPlay={room.play}
                   onPause={room.pause}
                   onSeek={room.seek}
-                  onSpeedChange={(rate, time) => { setSavedSpeed(rate); room.setSpeed(rate, time) }}
+                  onSpeedChange={handleSpeedChange}
                   recentVideos={recentVideos}
                   savedVolume={savedVolume}
                   savedSpeed={savedSpeed}
@@ -417,12 +445,26 @@ export default function App() {
       {/* Mobile chat/people panels */}
       {room.status === 'connected' && mobileTab === 'chat' && (
         <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#111112' }}>
-          <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
+          <Chat 
+            messages={room.messages} 
+            onSend={room.sendChatMessage} 
+            selfName={username} 
+            typingNames={Array.from(room.typingPeers?.keys() || []).map(id => room.participants.find(p => p.id === id)?.name).filter(Boolean)}
+            sendTyping={room.sendTyping}
+          />
         </div>
       )}
       {room.status === 'connected' && mobileTab === 'people' && (
         <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll" style={{ backgroundColor: '#111112' }}>
-          <Participants participants={room.participants} selfId={room.selfId} />
+          <Participants
+            participants={room.participants}
+            selfId={room.selfId}
+            isHost={room.isHost}
+            roomLocked={room.roomLocked}
+            onToggleLock={room.toggleRoomLock}
+            onMuteAll={room.muteAll}
+            raisedHands={room.raisedHands}
+          />
         </div>
       )}
       {/* Mobile: not connected — room panel */}
@@ -454,6 +496,30 @@ export default function App() {
 /* ── Right panel (chat + people tabs) ────────────────────────────────────── */
 function RightPanel({ room, username, width, onStartResizing }) {
   const [tab, setTab] = useState('chat')
+  const [unread, setUnread] = useState(0)
+  const lastLen = useRef(room.messages?.length || 0)
+  
+  useEffect(() => {
+    const currentLen = room.messages?.length || 0
+    if (currentLen > lastLen.current) {
+      if (tab !== 'chat') setUnread(u => u + (currentLen - lastLen.current))
+    }
+    lastLen.current = currentLen
+  }, [room.messages?.length, tab])
+  
+  useEffect(() => {
+    if (tab === 'chat') setUnread(0)
+  }, [tab])
+
+  const typingNames = useMemo(() => {
+    if (!room.typingPeers) return []
+    const names = []
+    for (const pid of room.typingPeers.keys()) {
+      const p = room.participants.find(x => x.id === pid)
+      if (p && p.name !== username) names.push(p.name)
+    }
+    return names
+  }, [room.typingPeers, room.participants, username])
 
   return (
     <aside
@@ -473,13 +539,18 @@ function RightPanel({ room, username, width, onStartResizing }) {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors ${
+              className={`relative flex-1 py-2.5 text-xs font-medium transition-colors ${
                 tab === t.id
                   ? 'text-text-primary border-b-2 border-accent-blue -mb-px'
                   : 'text-text-muted hover:text-text-secondary'
               }`}
             >
               {t.label}
+              {t.id === 'chat' && unread > 0 && (
+                <span className="absolute top-2.5 right-6 flex h-3 w-3 items-center justify-center rounded-full bg-status-error text-[8px] font-bold text-white">
+                  {unread > 9 ? '9+' : unread}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -488,10 +559,24 @@ function RightPanel({ room, username, width, onStartResizing }) {
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
         {room.status === 'connected' ? (
           tab === 'chat' ? (
-            <Chat messages={room.messages} onSend={room.sendChatMessage} selfName={username} />
+            <Chat 
+              messages={room.messages} 
+              onSend={room.sendChatMessage} 
+              selfName={username} 
+              typingNames={typingNames}
+              sendTyping={room.sendTyping}
+            />
           ) : (
             <div className="overflow-y-auto sidebar-scroll flex-1">
-              <Participants participants={room.participants} selfId={room.selfId} />
+              <Participants 
+                participants={room.participants} 
+                selfId={room.selfId}
+                isHost={room.isHost}
+                roomLocked={room.roomLocked}
+                onToggleLock={room.toggleRoomLock}
+                onMuteAll={room.muteAll}
+                raisedHands={room.raisedHands}
+              />
             </div>
           )
         ) : (

@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Tooltip from './Tooltip.jsx'
 import {
   Film,
   Gauge,
@@ -12,6 +13,7 @@ import {
   Volume1,
   Volume2,
   VolumeX,
+  PictureInPicture,
 } from 'lucide-react'
 import NativeVideoEngine   from './players/NativeVideoEngine.jsx'
 import YouTubeEngine       from './players/YouTubeEngine.jsx'
@@ -66,6 +68,7 @@ export default React.memo(function VideoPlayer({
   const [speed, setSpeedState]          = useState(savedSpeed ?? 1)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showSpeedMenu, setShowSpeedMenu] = useState(false)
+  const [seekIndicator, setSeekIndicator] = useState(null)
 
   const engineRef   = useRef(null)
   const containerRef = useRef(null)
@@ -203,6 +206,21 @@ export default React.memo(function VideoPlayer({
     }
   }, [])
 
+  const togglePip = useCallback(async () => {
+    if (source?.type !== 'native') return // PiP only supported for HTML5 video
+    const el = engineRef.current?.getElement?.()
+    if (!el || typeof el.requestPictureInPicture !== 'function') return
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture()
+      } else {
+        await el.requestPictureInPicture()
+      }
+    } catch (err) {
+      // Ignore PiP errors
+    }
+  }, [source])
+
   /* ── Playback controls ──────────────────────────────────────────────── */
 
   const handlePlayPause = useCallback(async () => {
@@ -218,6 +236,19 @@ export default React.memo(function VideoPlayer({
     onSeek(value)
     setSeekPreview(null)
   }, [onSeek])
+
+  const handleDoubleClickSeek = useCallback(async (side) => {
+    const engine = engineRef.current
+    if (!engine) return
+    const time = await engine.getCurrentTime()
+    const duration = await engine.getDuration()
+    const delta = side === 'left' ? -10 : 10
+    const newTime = Math.max(0, Math.min(duration || 0, time + delta))
+    commitSeek(newTime)
+    
+    setSeekIndicator(side)
+    setTimeout(() => setSeekIndicator(null), 500)
+  }, [commitSeek])
 
   const handleSpeedPick = useCallback(async (rate) => {
     setSpeedState(rate)
@@ -395,7 +426,31 @@ export default React.memo(function VideoPlayer({
                 />
               </div>
             )}
-            <div className="absolute inset-0 z-0" onDoubleClick={toggleFullscreen} />
+            
+            {/* Double-click seek zones */}
+            <div className="absolute inset-0 z-0 flex pointer-events-none">
+              <div 
+                className="w-1/2 h-full pointer-events-auto flex items-center justify-center relative" 
+                onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClickSeek('left') }}
+              >
+                {seekIndicator === 'left' && (
+                  <div className="absolute flex flex-col items-center justify-center bg-black/40 rounded-full h-32 w-32 animate-out fade-out zoom-in duration-500">
+                    <span className="text-white font-bold">-10s</span>
+                  </div>
+                )}
+              </div>
+              <div 
+                className="w-1/2 h-full pointer-events-auto flex items-center justify-center relative" 
+                onDoubleClick={(e) => { e.stopPropagation(); handleDoubleClickSeek('right') }}
+              >
+                {seekIndicator === 'right' && (
+                  <div className="absolute flex flex-col items-center justify-center bg-black/40 rounded-full h-32 w-32 animate-out fade-out zoom-in duration-500">
+                    <span className="text-white font-bold">+10s</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
             <div
               className="absolute inset-0 z-0 transition-all duration-500 ease-out"
               style={{ opacity: !localPlaying || loadError || autoplayBlocked ? 1 : 0 }}
@@ -499,17 +554,19 @@ export default React.memo(function VideoPlayer({
                 {/* Controls row */}
                 <div className="flex items-center gap-2">
                   {/* Play/Pause */}
-                  <button
-                    onClick={handlePlayPause}
-                    className="btn-icon h-8 w-8 shrink-0"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: 'none', color: 'white' }}
-                    aria-label={localPlaying ? 'Pause' : 'Play'}
-                  >
-                    {localPlaying
-                      ? <Pause className="h-4 w-4" />
-                      : <Play  className="h-4 w-4 pl-0.5" />
-                    }
-                  </button>
+                  <Tooltip content={localPlaying ? 'Pause' : 'Play'} position="top">
+                    <button
+                      onClick={handlePlayPause}
+                      className="btn-icon h-8 w-8 shrink-0"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.15)', border: 'none', color: 'white' }}
+                      aria-label={localPlaying ? 'Pause' : 'Play'}
+                    >
+                      {localPlaying
+                        ? <Pause className="h-4 w-4" />
+                        : <Play  className="h-4 w-4 pl-0.5" />
+                      }
+                    </button>
+                  </Tooltip>
 
                   {/* Time */}
                   <span className="font-mono text-xs text-white/80 tabular-nums whitespace-nowrap">
@@ -520,14 +577,16 @@ export default React.memo(function VideoPlayer({
                   <div className="ml-auto flex items-center gap-1.5">
                     {/* Volume */}
                     <div className="hidden items-center gap-1.5 sm:flex">
-                      <button
-                        onClick={toggleMute}
-                        className="btn-icon h-7 w-7"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
-                        aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-                      >
-                        <VolumeIcon className="h-3.5 w-3.5" />
-                      </button>
+                      <Tooltip content={volume === 0 ? 'Unmute' : 'Mute'} position="top">
+                        <button
+                          onClick={toggleMute}
+                          className="btn-icon h-7 w-7"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
+                          aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+                        >
+                          <VolumeIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </Tooltip>
                       <input
                         type="range"
                         min={0} max={1} step={0.05}
@@ -541,16 +600,18 @@ export default React.memo(function VideoPlayer({
 
                     {/* Speed */}
                     <div className="relative">
-                      <button
-                        onClick={() => setShowSpeedMenu((v) => !v)}
-                        className="btn-icon h-7 w-auto px-2 gap-1 text-xs"
-                        style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
-                        aria-label="Playback speed"
-                        aria-expanded={showSpeedMenu}
-                      >
-                        <Gauge className="h-3 w-3" />
-                        {speed}×
-                      </button>
+                      <Tooltip content="Playback speed" position="top">
+                        <button
+                          onClick={() => setShowSpeedMenu((v) => !v)}
+                          className="btn-icon h-7 w-auto px-2 gap-1 text-xs"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
+                          aria-label="Playback speed"
+                          aria-expanded={showSpeedMenu}
+                        >
+                          <Gauge className="h-3 w-3" />
+                          {speed}×
+                        </button>
+                      </Tooltip>
                       {showSpeedMenu && (
                         <div
                           className="panel-elevated absolute bottom-9 right-0 z-20 flex w-20 flex-col overflow-hidden rounded-lg p-1"
@@ -569,18 +630,38 @@ export default React.memo(function VideoPlayer({
                       )}
                     </div>
 
+                    {/* PiP */}
+                    {document.pictureInPictureEnabled && (
+                      <Tooltip 
+                        content={source.type === 'native' ? 'Picture-in-Picture' : 'PiP (Available for direct MP4 links only)'} 
+                        position="top"
+                      >
+                        <button
+                          onClick={togglePip}
+                          disabled={source.type !== 'native'}
+                          className="btn-icon h-7 w-7 hidden sm:flex disabled:opacity-30 disabled:cursor-not-allowed"
+                          style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
+                          aria-label="Picture-in-Picture"
+                        >
+                          <PictureInPicture className="h-3.5 w-3.5" />
+                        </button>
+                      </Tooltip>
+                    )}
+
                     {/* Fullscreen */}
-                    <button
-                      onClick={toggleFullscreen}
-                      className="btn-icon h-7 w-7"
-                      style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
-                      aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-                    >
-                      {isFullscreen
-                        ? <Minimize className="h-3.5 w-3.5" />
-                        : <Maximize className="h-3.5 w-3.5" />
-                      }
-                    </button>
+                    <Tooltip content={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'} position="top">
+                      <button
+                        onClick={toggleFullscreen}
+                        className="btn-icon h-7 w-7"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.1)', border: 'none', color: 'white' }}
+                        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                      >
+                        {isFullscreen
+                          ? <Minimize className="h-3.5 w-3.5" />
+                          : <Maximize className="h-3.5 w-3.5" />
+                        }
+                      </button>
+                    </Tooltip>
                   </div>
                 </div>
               </div>

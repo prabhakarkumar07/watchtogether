@@ -5,6 +5,7 @@ import { createRoomCode, roomCodeToPeerId, normalizeRoomCode, describePeerError 
 import { deriveRoomKey, encryptPayload, decryptPayload, isEncrypted } from '../lib/crypto.js'
 import { useLocalStorage } from './useLocalStorage.js'
 import { STORAGE_KEYS, writeStorage, readStorage } from '../lib/storage.js'
+import { playJoinSound, playLeaveSound, playMessageSound } from '../lib/sounds.js'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const HEARTBEAT_MS   = 10000  // Increased from 6s → 10s — 40% fewer encryptions
@@ -61,12 +62,18 @@ export function useRoom({ username, onToast }) {
   const [isMicOn,          setIsMicOn]          = useState(false)
   const [isCamOn,          setIsCamOn]          = useState(false)
 
+  const [roomLocked,       setRoomLocked]       = useState(false)
+  const [raisedHands,      setRaisedHands]      = useState(new Set())
+  const [typingPeers,      setTypingPeers]      = useState(new Map())
+
   const isMicOnRef = useRef(isMicOn)
   const isCamOnRef = useRef(isCamOn)
+  const roomLockedRef = useRef(roomLocked)
   const isLeavingRef = useRef(false)
 
   useEffect(() => { isMicOnRef.current = isMicOn }, [isMicOn])
   useEffect(() => { isCamOnRef.current = isCamOn }, [isCamOn])
+  useEffect(() => { roomLockedRef.current = roomLocked }, [roomLocked])
 
   // Refs — never cause re-renders
   const peerRef              = useRef(null)
@@ -208,6 +215,9 @@ export function useRoom({ username, onToast }) {
     setMessages([])
     setVideoState(initialVideoState())
     setIncomingStream(null)
+    setRoomLocked(false)
+    setRaisedHands(new Set())
+    setTypingPeers(new Map())
 
     if (outgoingStreamRef.current) {
       outgoingStreamRef.current.getTracks().forEach(t => t.stop())
@@ -258,7 +268,14 @@ export function useRoom({ username, onToast }) {
   // ── Host connection wiring ──────────────────────────────────────────────────
 
   const wireGuestConnection = useCallback((conn) => {
-    conn.on('open', () => { connectionsRef.current.set(conn.peer, conn) })
+    conn.on('open', () => { 
+      if (roomLockedRef.current) {
+        secureSend(conn, { type: 'system', message: { id: nanoid(8), system: true, text: 'Room is locked.', timestamp: Date.now() } })
+        setTimeout(() => { try { conn.close() } catch {} }, 100)
+        return
+      }
+      connectionsRef.current.set(conn.peer, conn) 
+    })
 
     conn.on('data', async (raw) => {
       const data = await secureReceive(raw)
@@ -287,6 +304,7 @@ export function useRoom({ username, onToast }) {
       addMessage(sysMsg)
       broadcast({ type: 'system', message: sysMsg })
       toast.info?.(`${name} left the room.`)
+      playLeaveSound()
     })
 
     conn.on('error', () => { connectionsRef.current.delete(conn.peer) })
@@ -314,6 +332,7 @@ export function useRoom({ username, onToast }) {
           addMessage(sysMsg)
           broadcast({ type: 'system', message: sysMsg }, connection.peer)
           toast.success?.(`${connection.metadata.name} joined the room.`)
+          playJoinSound()
           break
         }
         case 'chat': {
@@ -325,6 +344,7 @@ export function useRoom({ username, onToast }) {
           }
           addMessage(msg)
           broadcast({ type: 'chat', message: msg })
+          playMessageSound()
           break
         }
         case 'control': {
@@ -335,6 +355,11 @@ export function useRoom({ username, onToast }) {
         case 'effect': {
           window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId }))
           broadcast({ type: 'effect', effectId: data.effectId }, connection.peer)
+          break
+        }
+        case 'action': {
+          handleRoomAction(data, connection.peer)
+          broadcast({ type: 'action', ...data }, connection.peer)
           break
         }
         default: break
@@ -492,12 +517,24 @@ export function useRoom({ username, onToast }) {
 
     function handleHostData(data) {
       switch (data.type) {
-        case 'sync-state':   setVideoState(data.videoState); setParticipants(data.participants); setMessages(data.messages); selfIdRef.current = data.selfId; break
+        case 'sync-state': {
+          setVideoState(data.videoState)
+          setParticipants(data.participants)
+          setMessages(data.messages)
+          selfIdRef.current = data.selfId
+          break
+        }
         case 'participants': setParticipants(data.list); break
-        case 'chat':         addMessage(data.message); break
-        case 'system':       addMessage(data.message); toast.info?.(data.message.text); break
+        case 'chat':         addMessage(data.message); playMessageSound(); break
+        case 'system':       
+          addMessage(data.message); 
+          toast.info?.(data.message.text); 
+          if (data.message.text.includes('joined')) playJoinSound();
+          if (data.message.text.includes('left')) playLeaveSound();
+          break
         case 'control':      applyControlAction(data.action, data.payload); break
         case 'effect':       window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId })); break
+        case 'action':       handleRoomAction(data, data.peerId); break
         default: break
       }
     }
@@ -533,6 +570,82 @@ export function useRoom({ username, onToast }) {
     if (isHostRef.current) broadcast({ type: 'effect', effectId })
     else sendToHost({ type: 'effect', effectId })
   }, [broadcast, sendToHost])
+
+  // ── Custom Actions (Hand, Typing, Admin) ────────────────────────────────────
+
+  const handleRoomAction = useCallback((data, sourcePeerId) => {
+    if (data.action === 'raise-hand') {
+      setRaisedHands(prev => {
+        const next = new Set(prev)
+        if (data.state) next.add(data.peerId || sourcePeerId)
+        else next.delete(data.peerId || sourcePeerId)
+        return next
+      })
+    } else if (data.action === 'typing') {
+      const pid = data.peerId || sourcePeerId
+      setTypingPeers(prev => {
+        const next = new Map(prev)
+        if (data.state) next.set(pid, Date.now())
+        else next.delete(pid)
+        return next
+      })
+    } else if (data.action === 'mute-all') {
+      if (localCallStreamRef.current && isMicOnRef.current) {
+        localCallStreamRef.current.getAudioTracks().forEach(t => t.enabled = false)
+        setIsMicOn(false)
+        toast.info?.('The host muted all participants.')
+      }
+    } else if (data.action === 'lock-room') {
+      setRoomLocked(data.state)
+      toast.info?.(data.state ? 'The host locked the room.' : 'The host unlocked the room.')
+    }
+  }, [toast])
+
+  const dispatchAction = useCallback((actionData) => {
+    const payload = { type: 'action', peerId: peerRef.current?.id, ...actionData }
+    handleRoomAction(payload)
+    if (isHostRef.current) broadcast(payload)
+    else sendToHost(payload)
+  }, [broadcast, sendToHost, handleRoomAction])
+
+  const toggleHand = useCallback(() => {
+    const isRaised = raisedHands.has(peerRef.current?.id)
+    dispatchAction({ action: 'raise-hand', state: !isRaised })
+  }, [raisedHands, dispatchAction])
+
+  const sendTyping = useCallback((isTyping) => {
+    dispatchAction({ action: 'typing', state: isTyping })
+  }, [dispatchAction])
+
+  const toggleRoomLock = useCallback(() => {
+    if (!isHostRef.current) return
+    const next = !roomLockedRef.current
+    setRoomLocked(next)
+    toast.success?.(next ? 'Room locked. No new guests can join.' : 'Room unlocked.')
+    broadcast({ type: 'action', action: 'lock-room', state: next })
+  }, [broadcast, toast])
+
+  const muteAll = useCallback(() => {
+    if (!isHostRef.current) return
+    toast.success?.('Muted all guests.')
+    broadcast({ type: 'action', action: 'mute-all' })
+  }, [broadcast, toast])
+
+  // Clear stale typing indicators automatically
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setTypingPeers(prev => {
+        let changed = false
+        const next = new Map(prev)
+        const now = Date.now()
+        for (const [pid, ts] of next.entries()) {
+          if (now - ts > 3000) { next.delete(pid); changed = true }
+        }
+        return changed ? next : prev
+      })
+    }, 1000)
+    return () => clearInterval(iv)
+  }, [])
 
   const loadVideo = useCallback((source) => dispatchControl('video-change', { source }), [dispatchControl])
   const play      = useCallback((time)   => dispatchControl('play',         { time }),   [dispatchControl])
@@ -623,9 +736,17 @@ export function useRoom({ username, onToast }) {
     if (status !== 'connected') { toast.error?.('Join or create a room first.'); return }
     if (!navigator.mediaDevices?.getUserMedia) { toast.error?.('Camera not available.'); return }
     try {
+      const prefCam = readStorage(STORAGE_KEYS.PREFERRED_CAM, 'default')
+      const prefMic = readStorage(STORAGE_KEYS.PREFERRED_MIC, 'default')
+
+      const videoConstraints = prefCam !== 'default' ? { deviceId: { exact: prefCam } } : true
+      const audioConstraints = prefMic !== 'default' 
+        ? { deviceId: { exact: prefMic }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        : { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: videoConstraints,
+        audio: audioConstraints,
       })
       
       // If auto-joining from a refresh, force tracks OFF initially for privacy.
@@ -705,5 +826,7 @@ export function useRoom({ username, onToast }) {
     isMicOn, isCamOn,
     startVideoCall, stopVideoCall,
     toggleMic, toggleCam,
+    roomLocked, raisedHands, typingPeers,
+    toggleHand, sendTyping, toggleRoomLock, muteAll,
   }
 }

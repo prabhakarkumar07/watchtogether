@@ -15,6 +15,8 @@ export const STORAGE_KEYS = {
   WAS_HOST: 'wt_was_host',
   VIDEO_STATE: 'wt_video_state',
   CHAT_HISTORY: 'wt_chat_history',
+  PREFERRED_CAM: 'wt_pref_cam',
+  PREFERRED_MIC: 'wt_pref_mic',
 }
 
 export function readStorage(key, fallback = null) {

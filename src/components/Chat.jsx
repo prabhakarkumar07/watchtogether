@@ -1,11 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Send, Smile } from 'lucide-react'
+import Tooltip from './Tooltip.jsx'
 
 const QUICK_EMOJI = ['😀', '😂', '😍', '👍', '🎉', '🍿', '😮', '😢', '🔥', '❤️', '😅', '👏']
 const MAX_MESSAGE_LENGTH = 500
 
 function formatClock(timestamp) {
   return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+
+function Linkify({ text }) {
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return (
+    <>
+      {parts.map((part, i) => 
+        urlRegex.test(part) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all">
+            {part}
+          </a>
+        ) : (
+          <React.Fragment key={i}>{part}</React.Fragment>
+        )
+      )}
+    </>
+  );
 }
 
 function groupMessages(messages) {
@@ -83,26 +102,29 @@ const ChatMessage = React.memo(function ChatMessage({ m, selfName }) {
         )}
 
         {/* Bubble */}
-        <div
-          className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
-          style={
-            isSelf
-              ? { backgroundColor: '#FFB627', color: '#0A0A0A' }
-              : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#F5EFE6', border: '1px solid rgba(255,255,255,0.05)' }
-          }
-        >
-          {m.text}
-        </div>
+        <Tooltip content={m.grouped ? formatClock(m.timestamp) : null} position="left">
+          <div
+            className="max-w-[88%] break-words rounded-lg px-3 py-1.5 text-xs leading-relaxed"
+            style={
+              isSelf
+                ? { backgroundColor: '#FFB627', color: '#0A0A0A' }
+                : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#F5EFE6', border: '1px solid rgba(255,255,255,0.05)' }
+            }
+          >
+            <Linkify text={m.text} />
+          </div>
+        </Tooltip>
       </div>
     </div>
   )
 })
 
-export default React.memo(function Chat({ messages, onSend, selfName }) {
+export default React.memo(function Chat({ messages, onSend, selfName, typingNames = [], sendTyping }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const scrollRef = useRef(null)
   const inputRef  = useRef(null)
+  const lastTypingRef = useRef(0)
   
   const MAX_VISIBLE_MESSAGES = 80
   const groupedMessages = useMemo(() => {
@@ -132,7 +154,17 @@ export default React.memo(function Chat({ messages, onSend, selfName }) {
     onSend(trimmed)
     setText('')
     setShowEmoji(false)
+    sendTyping?.(false)
     inputRef.current?.focus()
+  }
+
+  const handleTextChange = (val) => {
+    setText(val)
+    const now = Date.now()
+    if (now - lastTypingRef.current > 1500) {
+      sendTyping?.(true)
+      lastTypingRef.current = now
+    }
   }
 
   const remaining = MAX_MESSAGE_LENGTH - text.length
@@ -169,9 +201,20 @@ export default React.memo(function Chat({ messages, onSend, selfName }) {
 
       {/* Input area */}
       <div
-        className="p-2.5 border-t border-app-border shrink-0"
+        className="p-2.5 border-t border-app-border shrink-0 flex flex-col"
         style={{ backgroundColor: '#0C0D13' }}
       >
+        {/* Typing indicator */}
+        {typingNames.length > 0 && (
+          <div className="px-1 pb-1.5 text-[10px] text-text-muted italic flex items-center gap-1.5">
+            <span className="flex gap-0.5" aria-hidden="true">
+              <span className="w-1 h-1 rounded-full bg-text-muted animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1 h-1 rounded-full bg-text-muted animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1 h-1 rounded-full bg-text-muted animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+            <span className="truncate max-w-[150px]">{typingNames.join(', ')}</span> {typingNames.length === 1 ? 'is' : 'are'} typing...
+          </div>
+        )}
         {/* Emoji picker */}
         {showEmoji && (
           <div
@@ -213,7 +256,7 @@ export default React.memo(function Chat({ messages, onSend, selfName }) {
               ref={inputRef}
               type="text"
               value={text}
-              onChange={(e) => setText(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+              onChange={(e) => handleTextChange(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
               placeholder="Message…"
               maxLength={MAX_MESSAGE_LENGTH}

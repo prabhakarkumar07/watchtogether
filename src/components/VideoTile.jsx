@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { MicOff, Pin, PinOff, VideoOff, Crown, VolumeX, Volume2, Volume1 } from 'lucide-react'
+import { MicOff, Pin, PinOff, VideoOff, Crown, VolumeX, Volume2, Volume1, Hand } from 'lucide-react'
+import Tooltip from './Tooltip.jsx'
 
 const VideoTile = React.memo(function VideoTile({
   stream,
@@ -11,6 +12,7 @@ const VideoTile = React.memo(function VideoTile({
   isHost      = false,
   isPinned    = false,
   isActiveSpeaker = false,
+  isHandRaised = false,
   onPin,
   className   = '',
   style       = {},
@@ -123,45 +125,61 @@ const VideoTile = React.memo(function VideoTile({
           {isHost && <Crown className="ml-1.5 h-3 w-3 text-accent-amber shrink-0" title="Host" />}
         </span>
         <div className="flex items-center gap-0.5 shrink-0">
+          {isHandRaised && (
+            <Tooltip content="Hand raised" position="top">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded cursor-help"
+                style={{ backgroundColor: 'rgba(59,130,246,0.9)' }}
+              >
+                <Hand className="h-2.5 w-2.5 text-white" />
+              </span>
+            </Tooltip>
+          )}
           {!isMicOn && (
-            <span
-              className="flex h-4 w-4 items-center justify-center rounded"
-              style={{ backgroundColor: 'rgba(239,68,68,0.9)' }}
-              title="Muted"
-              aria-label="Muted"
-            >
-              <MicOff className="h-2.5 w-2.5 text-white" />
-            </span>
+            <Tooltip content="Muted" position="top">
+              <span
+                className="flex h-4 w-4 items-center justify-center rounded cursor-help"
+                style={{ backgroundColor: 'rgba(239,68,68,0.9)' }}
+                aria-label="Muted"
+              >
+                <MicOff className="h-2.5 w-2.5 text-white" />
+              </span>
+            </Tooltip>
           )}
         </div>
       </div>
 
       {/* Hover: pin button */}
       {onPin && (
-        <button
-          type="button"
-          onClick={onPin}
-          className="absolute top-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded opacity-0 group-hover:opacity-100 transition-opacity z-10"
-          style={{
-            backgroundColor: isPinned ? 'rgba(59,130,246,0.85)' : 'rgba(0,0,0,0.65)',
-            color: 'white',
-          }}
-          title={isPinned ? 'Unpin' : 'Pin to top'}
-          aria-label={isPinned ? 'Unpin' : 'Pin participant'}
-        >
-          {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-        </button>
+        <div className="absolute top-1.5 right-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Tooltip content={isPinned ? 'Unpin' : 'Pin to top'} position="left">
+            <button
+              type="button"
+              onClick={onPin}
+              className="flex h-6 w-6 items-center justify-center rounded"
+              style={{
+                backgroundColor: isPinned ? 'rgba(59,130,246,0.85)' : 'rgba(0,0,0,0.65)',
+                color: 'white',
+              }}
+              aria-label={isPinned ? 'Unpin' : 'Pin participant'}
+            >
+              {isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+            </button>
+          </Tooltip>
+        </div>
       )}
 
       {/* Hover: volume slider (remote only) */}
       {!isLocal && (
         <div className="absolute top-1.5 left-1.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 bg-black/60 backdrop-blur-sm rounded-md px-1.5 py-1">
-          <button
-            onClick={() => setLocalVolume(v => v === 0 ? 1 : 0)}
-            className="text-white hover:text-accent-blue transition-colors"
-          >
-            <VolumeIcon className="h-3.5 w-3.5" />
-          </button>
+          <Tooltip content="Adjust volume" position="right">
+            <button
+              onClick={() => setLocalVolume(v => v === 0 ? 1 : 0)}
+              className="text-white hover:text-accent-blue transition-colors"
+            >
+              <VolumeIcon className="h-3.5 w-3.5" />
+            </button>
+          </Tooltip>
           <input
             type="range"
             min={0}

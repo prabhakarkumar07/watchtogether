@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Copy, DoorOpen, Loader2, LogOut, User } from 'lucide-react'
+import Tooltip from './Tooltip.jsx'
 
 export default React.memo(function RoomPanel({
   username,
@@ -49,24 +50,26 @@ export default React.memo(function RoomPanel({
               {roomCode}
             </span>
             <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={onCopyLink}
-                className="btn-icon h-6 w-6"
-                title="Copy invite link"
-                aria-label="Copy invite link"
-              >
-                <Copy className="h-3 w-3" />
-              </button>
-              <button
-                type="button"
-                onClick={onLeaveRoom}
-                className="btn-icon h-6 w-6 text-status-error hover:text-status-error"
-                title="Leave room"
-                aria-label="Leave room"
-              >
-                <LogOut className="h-3 w-3" />
-              </button>
+              <Tooltip content="Copy invite link" position="bottom">
+                <button
+                  type="button"
+                  onClick={onCopyLink}
+                  className="btn-icon h-6 w-6"
+                  aria-label="Copy invite link"
+                >
+                  <Copy className="h-3 w-3" />
+                </button>
+              </Tooltip>
+              <Tooltip content="Leave room" position="bottom">
+                <button
+                  type="button"
+                  onClick={onLeaveRoom}
+                  className="btn-icon h-6 w-6 text-status-error hover:text-status-error"
+                  aria-label="Leave room"
+                >
+                  <LogOut className="h-3 w-3" />
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
