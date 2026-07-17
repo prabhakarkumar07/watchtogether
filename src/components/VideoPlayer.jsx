@@ -14,6 +14,7 @@ import {
   Volume2,
   VolumeX,
   PictureInPicture,
+  X,
 } from 'lucide-react'
 import NativeVideoEngine   from './players/NativeVideoEngine.jsx'
 import YouTubeEngine       from './players/YouTubeEngine.jsx'
@@ -91,6 +92,12 @@ export default React.memo(function VideoPlayer({
     setReady(false)
     onLoadVideo(parsed)
   }, [urlInput, onLoadVideo])
+
+  const handleUnloadClick = useCallback(() => {
+    setUrlInput('')
+    setLoadError('')
+    onLoadVideo(null)
+  }, [onLoadVideo])
 
   const handlePickRecent = useCallback((url) => {
     setUrlInput(url)
@@ -335,6 +342,18 @@ export default React.memo(function VideoPlayer({
             <Film className="h-3 w-3" />
             Load
           </button>
+          {source && source.type !== 'screenshare' && (
+            <button
+              type="button"
+              onClick={handleUnloadClick}
+              className="btn-icon h-7 w-auto px-2 shrink-0 gap-1 text-[11px]"
+              style={{ backgroundColor: 'rgba(239,68,68,0.12)', color: '#FCA5A5', border: '1px solid rgba(239,68,68,0.25)' }}
+              aria-label="Close video"
+            >
+              <X className="h-3 w-3" />
+              <span className="hidden sm:inline">Close</span>
+            </button>
+          )}
           {!!navigator.mediaDevices?.getDisplayMedia && (
             outgoingStream ? (
               <button
