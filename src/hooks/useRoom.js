@@ -691,7 +691,9 @@ export function useRoom({ username, onToast }) {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: {
-          frameRate: { ideal: 60, max: 60 }
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30, max: 60 }
         },
         audio: {
           echoCancellation: false,
@@ -699,12 +701,6 @@ export function useRoom({ username, onToast }) {
           autoGainControl: false,
         }
       })
-
-      // Tell the WebRTC encoder to prioritize framerate over text sharpness
-      const videoTrack = stream.getVideoTracks()[0]
-      if (videoTrack && 'contentHint' in videoTrack) {
-        videoTrack.contentHint = 'motion'
-      }
 
       setOutgoingStream(stream)
       loadVideo({ type: 'screenshare', sharerId: selfId })
