@@ -689,7 +689,23 @@ export function useRoom({ username, onToast }) {
     if (!selfId || status !== 'connected') { toast.error?.('Join or create a room before sharing your screen.'); return }
     if (!navigator.mediaDevices?.getDisplayMedia) { toast.error?.('Screen sharing is not available in this browser.'); return }
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          frameRate: { ideal: 60, max: 60 }
+        },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        }
+      })
+
+      // Tell the WebRTC encoder to prioritize framerate over text sharpness
+      const videoTrack = stream.getVideoTracks()[0]
+      if (videoTrack && 'contentHint' in videoTrack) {
+        videoTrack.contentHint = 'motion'
+      }
+
       setOutgoingStream(stream)
       loadVideo({ type: 'screenshare', sharerId: selfId })
       await new Promise(r => setTimeout(r, 400))
@@ -757,9 +773,7 @@ export function useRoom({ username, onToast }) {
       const prefMic = readStorage(STORAGE_KEYS.PREFERRED_MIC, 'default')
 
       const videoConstraints = prefCam !== 'default' ? { deviceId: { exact: prefCam } } : true
-      const audioConstraints = prefMic !== 'default' 
-        ? { deviceId: { exact: prefMic }, echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-        : { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      const audioConstraints = prefMic !== 'default' ? { deviceId: { exact: prefMic } } : true
 
       const stream = await navigator.mediaDevices.getUserMedia({
         video: videoConstraints,

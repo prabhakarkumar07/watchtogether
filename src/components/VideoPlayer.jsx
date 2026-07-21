@@ -406,7 +406,7 @@ export default React.memo(function VideoPlayer({
       </div>
       <div
         ref={containerRef}
-        className={`group relative flex flex-1 min-h-0 min-w-0 items-center justify-center overflow-hidden bg-black ${
+        className={`group relative flex flex-1 min-h-0 min-w-0 overflow-hidden bg-black ${
           isFullscreen ? 'fixed inset-0 z-50' : ''
         }`}
       >
@@ -492,8 +492,8 @@ export default React.memo(function VideoPlayer({
             </div>
             {source.type === 'screenshare' && (
               <div
-                className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 pb-3 pt-8 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)' }}
+                className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 px-3 pb-3 pt-12 opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-within:opacity-100"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%)' }}
               >
                 <div className="flex items-center gap-2">
                   <button
@@ -540,8 +540,8 @@ export default React.memo(function VideoPlayer({
             {/* ── Standard video controls ── */}
             {source.type !== 'screenshare' && source.type !== 'external' && (
               <div
-                className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-3 pb-3 pt-10 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)' }}
+                className="absolute inset-x-0 bottom-0 flex flex-col gap-1.5 px-3 pb-3 pt-12 opacity-100 transition-opacity duration-200 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.3) 60%, transparent 100%)' }}
               >
                 {/* Seek bar */}
                 <input
