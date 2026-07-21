@@ -5,14 +5,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        // App surfaces
+        // App surfaces — driven by CSS variables so theme switching works
         app: {
-          bg:     '#0A0A0A',
-          panel:  '#111112',
-          raised: '#161618',
-          hover:  '#1C1C1F',
-          border: '#232326',
-          'border-subtle': '#1A1A1D',
+          bg:     'var(--bg-base)',
+          panel:  'var(--bg-panel)',
+          raised: 'var(--bg-raised)',
+          hover:  'var(--bg-hover)',
+          border: 'var(--border-default)',
+          'border-subtle': 'var(--border-subtle)',
         },
         // Accent colors
         accent: {
@@ -23,11 +23,11 @@ export default {
           red:    '#EF4444',
           violet: '#8B5CF6',
         },
-        // Text hierarchy
+        // Text hierarchy — driven by CSS variables
         text: {
-          primary:   '#F5EFE6',
-          secondary: '#C4C6D6',
-          muted:     '#9A9B9E',
+          primary:   'var(--text-primary)',
+          secondary: 'var(--text-secondary)',
+          muted:     'var(--text-muted)',
           inverse:   '#0A0A0A',
         },
         // Status
@@ -38,7 +38,7 @@ export default {
           error:   '#EF4444',
           live:    '#EF4444',
         },
-        // Light mode (keep existing for compat)
+        // Legacy tokens kept for landing page components
         void: {
           DEFAULT: '#090A0F',
           soft:    '#0F1117',

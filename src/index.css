@@ -4,12 +4,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CSS Design Tokens ───────────────────────────────────────────────────── */
+:root {
+  --bg-base:      #0A0A0A;
+  --bg-base-rgb:  10, 10, 10;
+  --bg-panel:     #111112;
+  --bg-raised:    #161618;
+  --bg-toolbar:   #0C0D13;
+  --bg-subtle:    #090A0F;
+  --bg-hover:     #1C1C1F;
+  --bg-chip:      rgba(74, 53, 20, 0.4);
+
+  --border-default: #232326;
+  --border-subtle:  #1A1A1D;
+
+  --text-primary:   #F5EFE6;
+  --text-secondary: #C4C6D6;
+  --text-muted:     #9A9B9E;
+  --text-faint:     #545769;
+
+  --recent-bg:     #161820;
+  --recent-text:   #8B8FA8;
+  --recent-border: #2A2D3A;
+  --recent-text-hover:   #E8E9F0;
+  --recent-border-hover: #3A3D4D;
+
+  --scrollbar-thumb: rgba(255,255,255,0.08);
+  --scrollbar-thumb-hover: rgba(255,182,39,0.30);
+
+  --section-header-color: #5C5D62;
+  --section-header-border: #1E2030;
+}
+
+html.light {
+  --bg-base:      #F0F2F5;
+  --bg-base-rgb:  240, 242, 245;
+  --bg-panel:     #FFFFFF;
+  --bg-raised:    #F9FAFB;
+  --bg-toolbar:   #FFFFFF;
+  --bg-subtle:    #F0F2F5;
+  --bg-hover:     #F3F4F6;
+  --bg-chip:      rgba(255, 182, 39, 0.12);
+
+  --border-default: #E2E4EA;
+  --border-subtle:  #EDEFF4;
+
+  --text-primary:   #111827;
+  --text-secondary: #374151;
+  --text-muted:     #6B7280;
+  --text-faint:     #9CA3AF;
+
+  --recent-bg:     #F3F4F6;
+  --recent-text:   #6B7280;
+  --recent-border: #E5E7EB;
+  --recent-text-hover:   #111827;
+  --recent-border-hover: #D1D5DB;
+
+  --scrollbar-thumb: rgba(0,0,0,0.12);
+  --scrollbar-thumb-hover: rgba(255,182,39,0.40);
+
+  --section-header-color: #9CA3AF;
+  --section-header-border: #E5E7EB;
+}
+
 @layer base {
   *,
   *::before,
   *::after {
     box-sizing: border-box;
-    border-color: #232326;
+    border-color: var(--border-default);
   }
 
   html {
@@ -28,17 +91,13 @@
     height: 100%;
     margin: 0;
     padding: 0;
-    background-color: #0A0A0A;
-    color: #F5EFE6;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
     font-family: 'Bricolage Grotesque', sans-serif;
     font-size: 14px;
     line-height: 1.5;
     font-optical-sizing: auto;
-  }
-
-  html.light body {
-    background-color: #F4F5F7;
-    color: #0F1117;
+    transition: background-color 0.2s, color 0.2s;
   }
 
   #root {
@@ -59,12 +118,12 @@
 
   ::-moz-selection {
     background-color: rgba(255, 182, 39, 0.28);
-    color: #F5EFE6;
+    color: var(--text-primary);
   }
 
   ::selection {
     background-color: rgba(255, 182, 39, 0.28);
-    color: #F5EFE6;
+    color: var(--text-primary);
   }
 
   ::-webkit-scrollbar {
@@ -75,11 +134,11 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.08);
+    background: var(--scrollbar-thumb);
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255,182,39,0.30);
+    background: var(--scrollbar-thumb-hover);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -93,27 +152,20 @@
 @layer components {
 
   .panel {
-    background-color: #111112;
-    border: 1px solid #232326;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
-  }
-
-  html.light .panel {
-    background-color: #ffffff;
-    border-color: #E2E4EA;
   }
 
   .panel-elevated {
-    background-color: #161618;
-    border: 1px solid #2A2A2E;
+    background-color: var(--bg-raised);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 0 0 1px rgba(255,255,255,0.04);
   }
 
   html.light .panel-elevated {
-    background-color: #ffffff;
-    border-color: #D1D5DB;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.10);
   }
 
   /* ─── BUTTONS ─────────────────────────────────────────────────────────── */
@@ -153,35 +205,25 @@
 
   .btn-secondary {
     @apply btn;
-    background-color: #1C1C1F;
-    color: #C4C6D6;
-    border: 1px solid #2A2A2E;
+    background-color: var(--bg-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-default);
   }
   .btn-secondary:hover:not(:disabled) {
-    background-color: #232326;
-    border-color: #3A3A3F;
-    color: #F5EFE6;
-  }
-
-  html.light .btn-secondary {
-    background-color: #F4F5F7;
-    color: #374151;
-    border-color: #D1D5DB;
-  }
-  html.light .btn-secondary:hover:not(:disabled) {
-    background-color: #E5E7EB;
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
   }
 
   .btn-ghost {
     @apply btn;
     background-color: transparent;
-    color: #9A9B9E;
+    color: var(--text-muted);
     border: 1px solid transparent;
   }
   .btn-ghost:hover:not(:disabled) {
-    background-color: #1C1C1F;
-    color: #F5EFE6;
-    border-color: #2A2A2E;
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-default);
   }
 
   .btn-icon {
@@ -189,24 +231,13 @@
     width: 32px;
     padding: 0;
     flex-shrink: 0;
-    background-color: #1C1C1F;
-    color: #9A9B9E;
-    border: 1px solid #2A2A2E;
+    background-color: var(--bg-hover);
+    color: var(--text-muted);
+    border: 1px solid var(--border-default);
   }
   .btn-icon:hover:not(:disabled) {
-    background-color: #232326;
-    color: #F5EFE6;
-    border-color: #3A3A3F;
-  }
-
-  html.light .btn-icon {
-    background-color: #F4F5F7;
-    color: #6B7280;
-    border-color: #D1D5DB;
-  }
-  html.light .btn-icon:hover:not(:disabled) {
-    background-color: #E5E7EB;
-    color: #111827;
+    background-color: var(--bg-panel);
+    color: var(--text-primary);
   }
 
   /* ─── INPUTS ──────────────────────────────────────────────────────────── */
@@ -215,35 +246,25 @@
     width: 100%;
     height: 34px;
     padding: 0 12px;
-    background-color: #111112;
-    border: 1px solid #2A2A2E;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-default);
     border-radius: 6px;
-    color: #F5EFE6;
+    color: var(--text-primary);
     font-size: 13px;
     outline: none;
     transition: border-color 0.15s, background-color 0.15s;
   }
   .input-field::placeholder {
-    color: #4A4A4F;
+    color: var(--text-faint);
   }
   .input-field:focus {
     border-color: #FFB627;
-    background-color: #0A0A0A;
+    background-color: var(--bg-base);
     box-shadow: 0 0 0 3px rgba(255, 182, 39, 0.12);
   }
   .input-field:disabled {
     opacity: 0.45;
     cursor: not-allowed;
-  }
-
-  html.light .input-field {
-    background-color: #ffffff;
-    border-color: #D1D5DB;
-    color: #111827;
-  }
-  html.light .input-field:focus {
-    border-color: #3B82F6;
-    background-color: #ffffff;
   }
 
   /* ─── STATUS BADGES ─────────────────────────────────────────────────────── */
@@ -264,8 +285,8 @@
     position: relative;
     overflow: hidden;
     border-radius: 8px;
-    background-color: #0A0A0A;
-    border: 1px solid #232326;
+    background-color: var(--bg-base);
+    border: 1px solid var(--border-default);
   }
 
   .video-tile-pinned {
@@ -278,24 +299,52 @@
     align-items: center;
     gap: 5px;
     padding: 6px 10px;
-    border-bottom: 1px solid #1E2030;
+    border-bottom: 1px solid var(--section-header-border);
     font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #5C5D62;
+    color: var(--section-header-color);
     flex-shrink: 0;
   }
   
   .glass {
-    background-color: #111112;
-    border: 1px solid #232326;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-default);
     border-radius: 8px;
   }
-  html.light .glass {
-    background-color: #ffffff;
-    border-color: #E2E4EA;
+
+  /* ─── RECENT URL PILLS ─────────────────────────────────────────────────── */
+  .recent-pill {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    transition: color 0.15s, border-color 0.15s;
+    background-color: var(--recent-bg);
+    color: var(--recent-text);
+    border: 1px solid var(--recent-border);
+    cursor: pointer;
   }
+  .recent-pill:hover {
+    color: var(--recent-text-hover);
+    border-color: var(--recent-border-hover);
+  }
+
+  /* ─── APP SURFACES (replaces inline styles) ─────────────────────────────── */
+  .bg-app-base   { background-color: var(--bg-base) !important; }
+  .bg-app-panel  { background-color: var(--bg-panel) !important; }
+  .bg-app-raised { background-color: var(--bg-raised) !important; }
+  .bg-app-toolbar { background-color: var(--bg-toolbar) !important; }
+  .bg-app-subtle  { background-color: var(--bg-subtle) !important; }
+  .text-app-primary   { color: var(--text-primary) !important; }
+  .text-app-secondary { color: var(--text-secondary) !important; }
+  .text-app-muted     { color: var(--text-muted) !important; }
+  .text-app-faint     { color: var(--text-faint) !important; }
+  .border-app-token   { border-color: var(--border-default) !important; }
 
   /* ─── LANDING PAGE POLISH ─────────────────────────────────────────────── */
 
@@ -370,15 +419,24 @@
     border-radius: 999px;
     font-weight: 500;
     font-size: 14px;
-    color: #F5EFE6;
+    color: var(--text-primary);
     background-color: rgba(255,255,255,0.02);
     border: 1px solid rgba(245,239,230,0.14);
     transition: all 0.2s;
     cursor: pointer;
   }
+  html.light .cta-outline {
+    background-color: rgba(0,0,0,0.04);
+    border-color: rgba(0,0,0,0.12);
+    color: var(--text-primary);
+  }
   .cta-outline:hover:not(:disabled) {
     background-color: rgba(255,255,255,0.05);
     border-color: rgba(245,239,230,0.28);
+  }
+  html.light .cta-outline:hover:not(:disabled) {
+    background-color: rgba(0,0,0,0.08);
+    border-color: rgba(0,0,0,0.2);
   }
   .cta-outline:disabled {
     opacity: 0.4;
@@ -389,10 +447,16 @@
 @layer utilities {
   .sidebar-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
   
   .glass-panel {
-    @apply panel backdrop-blur-md bg-app-panel/90;
+    @apply panel backdrop-blur-md;
+    background-color: color-mix(in srgb, var(--bg-panel) 90%, transparent);
+  }
+
+  .video-grid-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
   }
 }

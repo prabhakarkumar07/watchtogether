@@ -18,6 +18,7 @@ export default React.memo(function VideoCall({
   canJoinCall,
   onJoinCall,
   raisedHands = new Set(),
+  peerMediaStates = new Map(),
 }) {
   const [pinnedId, setPinnedId] = useState(null)
 
@@ -59,7 +60,7 @@ export default React.memo(function VideoCall({
           <span>Video call</span>
           <span
             className="font-mono text-[10px] rounded px-1 py-0.5"
-            style={{ backgroundColor: '#161820', color: '#545769' }}
+            style={{ backgroundColor: 'var(--recent-bg)', color: 'var(--text-faint)' }}
           >
             {totalTiles}
           </span>
@@ -128,8 +129,8 @@ export default React.memo(function VideoCall({
               label={tile.label}
               muted={tile.isLocal}
               isLocal={tile.isLocal}
-              isMicOn={tile.isLocal ? isMicOn : true}
-              isCamOn={tile.isLocal ? isCamOn : true}
+              isMicOn={tile.isLocal ? isMicOn : (peerMediaStates.get(tile.id)?.mic ?? true)}
+              isCamOn={tile.isLocal ? isCamOn : (peerMediaStates.get(tile.id)?.cam ?? true)}
               isHandRaised={raisedHands.has(tile.id)}
               isPinned={pinnedId === tile.id}
               onPin={totalTiles > 1 ? () => handlePin(tile.id) : undefined}
@@ -139,7 +140,7 @@ export default React.memo(function VideoCall({
         ))}
 
         {overflowCount > 0 && (
-          <div className="flex items-center justify-center gap-2 py-2 text-[11px] font-medium text-text-muted bg-[#161820] rounded border border-[#1C1E28]">
+          <div className="flex items-center justify-center gap-2 py-2 text-[11px] font-medium text-text-muted bg-app-raised rounded border border-app-border">
             <Users className="h-3.5 w-3.5" />
             +{overflowCount} more on call
           </div>

@@ -39,7 +39,7 @@ const ParticipantItem = React.memo(function ParticipantItem({ p, selfId, isHandR
   return (
     <li
       className="group flex items-center gap-2 rounded px-1.5 py-1 transition-colors"
-      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#161820'}
+      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
     >
       <Avatar id={p.id} name={p.name} size={22} />
@@ -93,7 +93,7 @@ export default React.memo(function Participants({
           <span>Participants</span>
           <span
             className="font-mono text-[10px] rounded px-1.5 py-0.5 ml-1"
-            style={{ backgroundColor: '#161820', color: '#545769' }}
+            style={{ backgroundColor: 'var(--recent-bg)', color: 'var(--text-faint)' }}
           >
             {participants.length}
           </span>

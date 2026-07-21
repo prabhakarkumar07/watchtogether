@@ -75,7 +75,7 @@ const VideoTile = React.memo(function VideoTile({
 
   return (
     <div
-      className={`video-tile group relative w-full h-full overflow-hidden rounded bg-[#090A0F] ${isPinned ? 'video-tile-pinned' : ''} ${className}`}
+      className={`video-tile group relative w-full h-full overflow-hidden rounded bg-app-subtle ${isPinned ? 'video-tile-pinned' : ''} ${className}`}
       style={{
         ...style,
         boxShadow: isActiveSpeaker ? 'inset 0 0 0 3px #3b82f6' : 'none',
@@ -97,11 +97,11 @@ const VideoTile = React.memo(function VideoTile({
       {!showVideo && (
         <div
           className="absolute inset-0 flex flex-col items-center justify-center gap-1.5"
-          style={{ backgroundColor: '#161820' }}
+          style={{ backgroundColor: 'var(--bg-raised)' }}
         >
           <div
             className="flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold"
-            style={{ backgroundColor: '#1C1E28', color: '#8B8FA8' }}
+            style={{ backgroundColor: 'var(--bg-hover)', color: 'var(--text-muted)' }}
           >
             {label?.slice(0, 1).toUpperCase() || '?'}
           </div>

@@ -108,7 +108,7 @@ const ChatMessage = React.memo(function ChatMessage({ m, selfName }) {
             style={
               isSelf
                 ? { backgroundColor: '#FFB627', color: '#0A0A0A' }
-                : { backgroundColor: 'rgba(255,255,255,0.03)', color: '#F5EFE6', border: '1px solid rgba(255,255,255,0.05)' }
+                : { backgroundColor: 'rgba(255,255,255,0.04)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }
             }
           >
             <Linkify text={m.text} />
@@ -176,7 +176,7 @@ export default React.memo(function Chat({ messages, onSend, selfName, typingName
         <span>Chat</span>
         <span
           className="ml-auto font-mono text-[10px] rounded px-1.5 py-0.5"
-          style={{ backgroundColor: '#161820', color: '#545769' }}
+          style={{ backgroundColor: 'var(--recent-bg)', color: 'var(--text-faint)' }}
         >
           {messages.length}
         </span>
@@ -201,8 +201,7 @@ export default React.memo(function Chat({ messages, onSend, selfName, typingName
 
       {/* Input area */}
       <div
-        className="p-2.5 border-t border-app-border shrink-0 flex flex-col"
-        style={{ backgroundColor: '#0C0D13' }}
+        className="p-2.5 border-t border-app-border shrink-0 flex flex-col bg-app-toolbar"
       >
         {/* Typing indicator */}
         {typingNames.length > 0 && (

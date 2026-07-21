@@ -310,12 +310,10 @@ export default React.memo(function VideoPlayer({
 
   return (
     <div
-      className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden"
-      style={{ backgroundColor: '#090A0F' }}
+      className="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden bg-app-subtle"
     >
       <div
-        className="flex flex-col gap-1.5 px-2 py-1.5 border-b border-app-border shrink-0"
-        style={{ backgroundColor: '#0C0D13' }}
+        className="flex flex-col gap-1.5 px-2 py-1.5 border-b border-app-border shrink-0 bg-app-toolbar"
       >
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -385,14 +383,7 @@ export default React.memo(function VideoPlayer({
               <button
                 key={url}
                 onClick={() => handlePickRecent(url)}
-                className="max-w-[180px] truncate rounded px-2 py-0.5 text-[11px] transition-colors"
-                style={{
-                  backgroundColor: '#161820',
-                  color:           '#8B8FA8',
-                  border:          '1px solid #2A2D3A',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#E8E9F0'; e.currentTarget.style.borderColor = '#3A3D4D' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#8B8FA8'; e.currentTarget.style.borderColor = '#2A2D3A' }}
+                className="recent-pill"
                 title={url}
               >
                 {url.replace(/^https?:\/\//, '')}
@@ -420,7 +411,7 @@ export default React.memo(function VideoPlayer({
         }`}
       >
         {!source && (
-          <div className="flex flex-col items-center justify-center h-full w-full bg-[#090A0F] absolute inset-0">
+          <div className="flex flex-col items-center justify-center h-full w-full bg-app-subtle absolute inset-0">
             <div className="relative flex items-center justify-center h-24 w-24 mb-6">
                <div className="absolute inset-0 rounded-full bg-accent-amber/5 animate-[ping_3s_ease-in-out_infinite]" />
                <div className="absolute inset-2 rounded-full bg-accent-amber/10 animate-[ping_3s_ease-in-out_infinite_500ms]" />

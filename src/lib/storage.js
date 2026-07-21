@@ -40,6 +40,38 @@ export function writeStorage(key, value) {
   }
 }
 
+export function readSession(key, fallback = null) {
+  try {
+    const raw = window.sessionStorage.getItem(key)
+    if (raw === null) return fallback
+    const parsed = JSON.parse(raw)
+    // Check if it has an expiry wrapper
+    if (parsed && typeof parsed === 'object' && parsed._expiry) {
+      if (Date.now() > parsed._expiry) {
+        window.sessionStorage.removeItem(key)
+        return fallback
+      }
+      return parsed.value
+    }
+    return parsed
+  } catch {
+    return fallback
+  }
+}
+
+export function writeSession(key, value, maxAgeMs = null) {
+  try {
+    let payload = value
+    if (maxAgeMs) {
+      payload = { value, _expiry: Date.now() + maxAgeMs }
+    }
+    window.sessionStorage.setItem(key, JSON.stringify(payload))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function addRecentVideo(url) {
   const list = readStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const deduped = [url, ...list.filter((item) => item !== url)].slice(0, 8)

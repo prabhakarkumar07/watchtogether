@@ -88,11 +88,10 @@ export default function LandingPage({ onCreateRoom, onJoinRoom, username, onUser
 
   return (
     <div
-      className="landing-page min-h-screen w-full overflow-y-auto text-white grain scanlines"
-      style={{ backgroundColor: '#0A0A0A' }}
+      className="landing-page min-h-screen w-full overflow-y-auto text-white grain scanlines bg-app-base"
     >
       {/* ══ NAV ══════════════════════════════════════════════════════════════ */}
-      <nav className="sticky top-0 z-50 border-b border-white/5 backdrop-blur-xl" style={{ backgroundColor: 'rgba(10,10,10,0.85)' }}>
+      <nav className="sticky top-0 z-50 border-b border-white/5 backdrop-blur-xl" style={{ backgroundColor: 'rgba(var(--bg-base-rgb, 10,10,10), 0.85)' }}>
         <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-4">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-[#FFB627]">

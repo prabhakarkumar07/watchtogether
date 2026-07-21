@@ -8,6 +8,7 @@ import VideoCall from './components/VideoCall.jsx'
 import Chat from './components/Chat.jsx'
 import { useTheme } from './hooks/useTheme.js'
 import { useLocalStorage } from './hooks/useLocalStorage.js'
+import { useSessionStorage } from './hooks/useSessionStorage.js'
 import { useRoom } from './hooks/useRoom.js'
 import { useToast } from './context/ToastContext.jsx'
 import { STORAGE_KEYS, addRecentVideo, readStorage, writeStorage } from './lib/storage.js'
@@ -34,8 +35,7 @@ const LAYOUTS = [
   { id: 'classic', label: 'Classic',  Icon: Layout,  hint: 'Sidebar · Video · Chat'   },
   { id: 'theater', label: 'Theater',  Icon: Monitor,  hint: 'Sidebar · Max video'       },
   { id: 'focus',   label: 'Focus',    Icon: Square,   hint: 'Video only'                 },
-  { id: 'sidebar', label: 'Sidebar',  Icon: Sidebar,  hint: 'Wide sidebar · Video'       },
-  { id: 'grid',    label: 'Grid',     Icon: Grid,     hint: 'Fullscreen grid'            },
+  { id: 'grid',    label: 'Video Call', Icon: Grid,   hint: 'Fullscreen grid'            },
 ]
 
 export default function App() {
@@ -43,7 +43,7 @@ export default function App() {
   const toast = useToast()
 
   const [username, setUsername]         = useLocalStorage(STORAGE_KEYS.USERNAME, '')
-  const [lastRoom, setLastRoom]         = useLocalStorage(STORAGE_KEYS.LAST_ROOM, '')
+  const [lastRoom, setLastRoom]         = useSessionStorage(STORAGE_KEYS.LAST_ROOM, '', 7200000) // 2 hours expiry
   const [recentVideos, setRecentVideos] = useLocalStorage(STORAGE_KEYS.RECENT_VIDEOS, [])
   const [savedVolume, setSavedVolume]   = useLocalStorage(STORAGE_KEYS.VOLUME, 0.8)
   const [savedSpeed, setSavedSpeed]     = useLocalStorage(STORAGE_KEYS.PLAYBACK_SPEED, 1)
@@ -204,7 +204,7 @@ export default function App() {
   // ── Connecting spinner ────────────────────────────────────────────────
   if (room.status === 'connecting') {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4" style={{ backgroundColor: '#0A0A0A' }}>
+      <div className="flex h-full flex-col items-center justify-center gap-4 bg-app-base">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-accent-amber" />
         <p className="text-sm font-medium" style={{ color: 'rgba(232,233,240,0.5)' }}>Connecting…</p>
       </div>
@@ -241,8 +241,8 @@ export default function App() {
         {/* ════ LEFT SIDEBAR ════════════════════════════════════════════ */}
         {showLeftSidebar && (
           <aside
-            className="hidden lg:flex flex-col shrink-0 border-r border-app-border relative overflow-visible"
-            style={{ backgroundColor: '#111112', width: leftPanel.width }}
+            style={{ width: leftPanel.width }}
+            className="hidden lg:flex flex-col shrink-0 border-r border-app-border relative overflow-visible bg-app-panel"
           >
             {/* Scrollable content area */}
             <div className="flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll">
@@ -288,6 +288,7 @@ export default function App() {
                   canJoinCall={canJoinCall}
                   onJoinCall={room.startVideoCall}
                   raisedHands={room.raisedHands}
+                  peerMediaStates={room.peerMediaStates}
                 />
               )}
             </div>
@@ -357,6 +358,7 @@ export default function App() {
               hasLocalCall={hasLocalCall}
               onJoinCall={room.startVideoCall}
               raisedHands={room.raisedHands}
+              peerMediaStates={room.peerMediaStates}
             />
           ) : (
             <>
@@ -377,6 +379,7 @@ export default function App() {
                     hasLocalCall={hasLocalCall}
                     onJoinCall={room.startVideoCall}
                     raisedHands={room.raisedHands}
+                    peerMediaStates={room.peerMediaStates}
                   />
                 </div>
               )}
@@ -419,8 +422,7 @@ export default function App() {
       {/* ── Mobile bottom tabs ──────────────────────────────────────── */}
       {room.status === 'connected' && (
         <div
-          className="lg:hidden flex border-t border-app-border shrink-0"
-          style={{ backgroundColor: '#0C0D13' }}
+          className="lg:hidden flex border-t border-app-border shrink-0 bg-app-toolbar"
         >
           {[
             { id: 'video',  label: 'Video'  },
@@ -444,7 +446,7 @@ export default function App() {
 
       {/* Mobile chat/people panels */}
       {room.status === 'connected' && mobileTab === 'chat' && (
-        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden" style={{ backgroundColor: '#111112' }}>
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-hidden bg-app-panel">
           <Chat 
             messages={room.messages} 
             onSend={room.sendChatMessage} 
@@ -455,7 +457,7 @@ export default function App() {
         </div>
       )}
       {room.status === 'connected' && mobileTab === 'people' && (
-        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll" style={{ backgroundColor: '#111112' }}>
+        <div className="lg:hidden flex flex-col flex-1 min-h-0 overflow-y-auto sidebar-scroll bg-app-panel">
           <Participants
             participants={room.participants}
             selfId={room.selfId}
@@ -469,7 +471,7 @@ export default function App() {
       )}
       {/* Mobile: not connected — room panel */}
       {room.status !== 'connected' && (
-        <div className="lg:hidden flex flex-col overflow-y-auto flex-1 p-3" style={{ backgroundColor: '#111112' }}>
+        <div className="lg:hidden flex flex-col overflow-y-auto flex-1 p-3 bg-app-panel">
           <RoomPanel
             username={username}
             onUsernameChange={setUsername}
@@ -523,8 +525,8 @@ function RightPanel({ room, username, width, onStartResizing }) {
 
   return (
     <aside
-      className="hidden lg:flex flex-col shrink-0 border-l border-app-border relative overflow-visible"
-      style={{ backgroundColor: '#111112', width }}
+      className="hidden lg:flex flex-col shrink-0 border-l border-app-border relative overflow-visible bg-app-panel"
+      style={{ width }}
     >
       {/* Resize handle */}
       <div

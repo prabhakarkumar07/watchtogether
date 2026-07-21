@@ -39,6 +39,7 @@ export default React.memo(function VideoGrid({
   hasLocalCall,
   onJoinCall,
   raisedHands = new Set(),
+  peerMediaStates = new Map(),
 }) {
   const [pinnedId, setPinnedId] = useState(null)
   const containerRef = useRef(null)
@@ -111,7 +112,7 @@ export default React.memo(function VideoGrid({
 
     if (hasLocalCall) {
       return (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-[#161820]/80 px-6 py-3 backdrop-blur border border-white/10 z-10 shadow-2xl">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-app-panel/80 px-6 py-3 backdrop-blur border border-white/10 z-10 shadow-2xl">
           <button
             type="button"
             onClick={onToggleMic}
@@ -153,7 +154,7 @@ export default React.memo(function VideoGrid({
     const otherTiles = sortedTiles.slice(1)
     
     return (
-      <div className="flex flex-col h-full w-full gap-2 p-2 bg-[#090A0F] relative">
+      <div className="flex flex-col h-full w-full gap-2 p-2 bg-app-subtle relative">
         {/* Main Pinned Video */}
         <div className="flex-1 min-h-0 relative rounded-lg overflow-hidden border border-app-border">
           <VideoTile
@@ -161,8 +162,8 @@ export default React.memo(function VideoGrid({
             label={pinnedTile.label}
             muted={pinnedTile.isLocal}
             isLocal={pinnedTile.isLocal}
-            isMicOn={pinnedTile.isLocal ? isMicOn : true}
-            isCamOn={pinnedTile.isLocal ? isCamOn : true}
+            isMicOn={pinnedTile.isLocal ? isMicOn : (peerMediaStates.get(pinnedTile.id)?.mic ?? true)}
+            isCamOn={pinnedTile.isLocal ? isCamOn : (peerMediaStates.get(pinnedTile.id)?.cam ?? true)}
             isHost={pinnedTile.isHost}
             isHandRaised={raisedHands.has(pinnedTile.id)}
             isPinned={true}
@@ -180,8 +181,8 @@ export default React.memo(function VideoGrid({
                 label={tile.label}
                 muted={tile.isLocal}
                 isLocal={tile.isLocal}
-                isMicOn={tile.isLocal ? isMicOn : true}
-                isCamOn={tile.isLocal ? isCamOn : true}
+                isMicOn={tile.isLocal ? isMicOn : (peerMediaStates.get(tile.id)?.mic ?? true)}
+                isCamOn={tile.isLocal ? isCamOn : (peerMediaStates.get(tile.id)?.cam ?? true)}
                 isHost={tile.isHost}
                 isHandRaised={raisedHands.has(tile.id)}
                 isPinned={false}
@@ -204,7 +205,7 @@ export default React.memo(function VideoGrid({
     <div 
       ref={containerRef}
       onDoubleClick={toggleFullscreen}
-      className="flex flex-col flex-1 h-full w-full p-2 bg-[#090A0F] overflow-hidden relative"
+      className="flex flex-col flex-1 h-full w-full p-2 bg-app-subtle overflow-hidden relative"
     >
       <div 
         className="flex-1 min-h-0 flex flex-wrap justify-center content-center items-center gap-2 w-full h-full"
@@ -216,8 +217,8 @@ export default React.memo(function VideoGrid({
               label={tile.label}
               muted={tile.isLocal}
               isLocal={tile.isLocal}
-              isMicOn={tile.isLocal ? isMicOn : true}
-              isCamOn={tile.isLocal ? isCamOn : true}
+              isMicOn={tile.isLocal ? isMicOn : (peerMediaStates.get(tile.id)?.mic ?? true)}
+              isCamOn={tile.isLocal ? isCamOn : (peerMediaStates.get(tile.id)?.cam ?? true)}
               isHost={tile.isHost}
               isHandRaised={raisedHands.has(tile.id)}
               isPinned={pinnedId === tile.id}

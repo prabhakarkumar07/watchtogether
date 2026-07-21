@@ -40,8 +40,7 @@ export default React.memo(function Header({
 
   return (
     <header
-      className="flex h-9 shrink-0 items-center justify-between gap-3 px-3 border-b border-app-border z-30"
-      style={{ backgroundColor: '#0A0A0A' }}
+      className="flex h-9 shrink-0 items-center justify-between gap-3 px-3 border-b border-app-border z-30 bg-app-base"
     >
       {/* ── Brand ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2 shrink-0">
@@ -68,7 +67,7 @@ export default React.memo(function Header({
             <Tooltip content="Copy room link" position="bottom">
               <button
                 className="flex items-center gap-1.5 rounded px-2 py-0.5 group transition-colors h-7"
-                style={{ backgroundColor: 'rgba(74, 53, 20, 0.4)', border: '1px dashed rgba(255, 182, 39, 0.4)' }}
+                style={{ backgroundColor: 'var(--bg-chip)', border: '1px dashed rgba(255, 182, 39, 0.4)' }}
                 onClick={onCopyLink}
                 aria-label="Copy room link"
               >
@@ -126,7 +125,7 @@ export default React.memo(function Header({
                     >
                       <Icon
                         className="h-3.5 w-3.5 shrink-0"
-                        style={{ color: activeLayout === layout.id ? '#3B82F6' : '#545769' }}
+                        style={{ color: activeLayout === layout.id ? '#3B82F6' : 'var(--text-faint)' }}
                       />
                       <span className="flex-1 min-w-0">
                         <span className="block text-xs font-medium text-text-primary">{layout.label}</span>
@@ -149,8 +148,7 @@ export default React.memo(function Header({
             <button
               type="button"
               onClick={onLeaveRoom}
-              className="btn-ghost h-7 px-2 text-[11px]"
-              style={{ color: '#FCA5A5' }}
+              className="btn-ghost h-7 px-2 text-[11px] text-red-300"
               aria-label="Leave room"
             >
               Leave

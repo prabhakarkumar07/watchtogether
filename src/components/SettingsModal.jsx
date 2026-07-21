@@ -95,7 +95,7 @@ export default function SettingsModal({ onClose }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 border-t border-app-border px-4 py-3 bg-[#0A0A0A] rounded-b-xl">
+        <div className="flex items-center justify-end gap-2 border-t border-app-border px-4 py-3 bg-app-base rounded-b-xl">
           <button 
             onClick={onClose}
             className="btn-ghost h-8 px-4 text-xs font-medium"

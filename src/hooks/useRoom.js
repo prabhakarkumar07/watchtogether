@@ -65,6 +65,7 @@ export function useRoom({ username, onToast }) {
   const [roomLocked,       setRoomLocked]       = useState(false)
   const [raisedHands,      setRaisedHands]      = useState(new Set())
   const [typingPeers,      setTypingPeers]      = useState(new Map())
+  const [peerMediaStates,  setPeerMediaStates]  = useState(new Map())
 
   const isMicOnRef = useRef(isMicOn)
   const isCamOnRef = useRef(isCamOn)
@@ -98,11 +99,13 @@ export function useRoom({ username, onToast }) {
   const messagesRef      = useRef(messages)
   const participantsRef  = useRef(participants)
   const isHostRef        = useRef(isHost)
+  const peerMediaStatesRef = useRef(peerMediaStates)
 
   useEffect(() => { videoStateRef.current   = videoState   }, [videoState])
   useEffect(() => { messagesRef.current     = messages     }, [messages])
   useEffect(() => { participantsRef.current = participants }, [participants])
   useEffect(() => { isHostRef.current       = isHost       }, [isHost])
+  useEffect(() => { peerMediaStatesRef.current = peerMediaStates }, [peerMediaStates])
   useEffect(() => { outgoingStreamRef.current = outgoingStream }, [outgoingStream])
 
   // Stable toast proxy — never changes reference
@@ -218,6 +221,7 @@ export function useRoom({ username, onToast }) {
     setRoomLocked(false)
     setRaisedHands(new Set())
     setTypingPeers(new Map())
+    setPeerMediaStates(new Map())
 
     if (outgoingStreamRef.current) {
       outgoingStreamRef.current.getTracks().forEach(t => t.stop())
@@ -324,6 +328,7 @@ export function useRoom({ username, onToast }) {
             videoState: videoStateRef.current,
             participants: list,
             messages: messagesRef.current,
+            peerMediaStates: Array.from(peerMediaStatesRef.current.entries()),
             selfId: connection.peer,
           })
           broadcast({ type: 'participants', list }, connection.peer)
@@ -452,6 +457,7 @@ export function useRoom({ username, onToast }) {
       setupCallListener(peer)
       peer.on('connection', (conn) => wireGuestConnection(conn))
       peer.on('error', (err) => {
+        if (err.type === 'peer-unavailable') return // Ignore when guest refreshes/drops abruptly
         if (err.type === 'unavailable-id') {
           peer.destroy()
           if (existingCode && !forceNewCode) {
@@ -512,7 +518,10 @@ export function useRoom({ username, onToast }) {
       conn.on('error', (err) => { setStatus('error'); toast.error?.(describePeerError(err)) })
     })
 
-    peer.on('error', (err) => { setStatus('error'); toast.error?.(describePeerError(err)) })
+    peer.on('error', (err) => {
+      if (err.type === 'peer-unavailable') return
+      setStatus('error'); toast.error?.(describePeerError(err))
+    })
     peer.on('disconnected', () => { if (!peer.destroyed && !isLeavingRef.current) peer.reconnect() })
 
     function handleHostData(data) {
@@ -521,6 +530,7 @@ export function useRoom({ username, onToast }) {
           setVideoState(data.videoState)
           setParticipants(data.participants)
           setMessages(data.messages)
+          if (data.peerMediaStates) setPeerMediaStates(new Map(data.peerMediaStates))
           selfIdRef.current = data.selfId
           break
         }
@@ -587,6 +597,13 @@ export function useRoom({ username, onToast }) {
         const next = new Map(prev)
         if (data.state) next.set(pid, Date.now())
         else next.delete(pid)
+        return next
+      })
+    } else if (data.action === 'media-state') {
+      const pid = data.peerId || sourcePeerId
+      setPeerMediaStates(prev => {
+        const next = new Map(prev)
+        next.set(pid, { mic: data.mic, cam: data.cam })
         return next
       })
     } else if (data.action === 'mute-all') {
@@ -762,6 +779,14 @@ export function useRoom({ username, onToast }) {
       writeStorage(STORAGE_KEYS.WAS_IN_CALL, true)
       videoCallPeersRef.current.clear()
       callAllPeers(stream)
+      
+      // Dispatch initial state when joining call
+      const dispatchActionFunc = actionData => {
+        const payload = { type: 'action', peerId: peerRef.current?.id, ...actionData }
+        if (isHostRef.current) broadcast(payload)
+        else sendToHost(payload)
+      }
+      dispatchActionFunc({ action: 'media-state', mic: !autoJoined, cam: !autoJoined })
     } catch (err) {
       if (err.name === 'NotAllowedError') toast.warning?.('Camera or microphone permission was denied.')
       else toast.error?.('Could not access camera or microphone.')
@@ -787,7 +812,13 @@ export function useRoom({ username, onToast }) {
     const next = !isMicOnRef.current
     stream.getAudioTracks().forEach(t => { t.enabled = next })
     setIsMicOn(next)
-  }, [])
+    
+    // Inline dispatchAction logic since dispatchAction depends on handleRoomAction which is defined earlier
+    const payload = { type: 'action', peerId: peerRef.current?.id, action: 'media-state', mic: next, cam: isCamOnRef.current }
+    setPeerMediaStates(prev => { const m = new Map(prev); m.set(payload.peerId, { mic: payload.mic, cam: payload.cam }); return m })
+    if (isHostRef.current) broadcast(payload)
+    else sendToHost(payload)
+  }, [broadcast, sendToHost])
 
   const toggleCam = useCallback(() => {
     const stream = localCallStreamRef.current
@@ -795,7 +826,12 @@ export function useRoom({ username, onToast }) {
     const next = !isCamOnRef.current
     stream.getVideoTracks().forEach(t => { t.enabled = next })
     setIsCamOn(next)
-  }, [])
+    
+    const payload = { type: 'action', peerId: peerRef.current?.id, action: 'media-state', mic: isMicOnRef.current, cam: next }
+    setPeerMediaStates(prev => { const m = new Map(prev); m.set(payload.peerId, { mic: payload.mic, cam: payload.cam }); return m })
+    if (isHostRef.current) broadcast(payload)
+    else sendToHost(payload)
+  }, [broadcast, sendToHost])
 
   // Auto-call new participants who join while a video call is in progress.
   // Use a stable ID string comparison so this ONLY fires when the actual peer
@@ -823,7 +859,7 @@ export function useRoom({ username, onToast }) {
     startScreenShare, stopScreenShare,
     incomingStream, outgoingStream,
     localCallStream, remoteCallStreams,
-    isMicOn, isCamOn,
+    isMicOn, isCamOn, peerMediaStates,
     startVideoCall, stopVideoCall,
     toggleMic, toggleCam,
     roomLocked, raisedHands, typingPeers,
