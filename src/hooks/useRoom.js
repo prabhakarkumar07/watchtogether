@@ -358,8 +358,9 @@ export function useRoom({ username, onToast }) {
           break
         }
         case 'effect': {
-          window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId }))
-          broadcast({ type: 'effect', effectId: data.effectId }, connection.peer)
+          const fromId = data.peerId || connection.peer
+          window.dispatchEvent(new CustomEvent('room-effect', { detail: { effectId: data.effectId, peerId: fromId } }))
+          broadcast({ type: 'effect', effectId: data.effectId, peerId: fromId }, connection.peer)
           break
         }
         case 'action': {
@@ -543,7 +544,7 @@ export function useRoom({ username, onToast }) {
           if (data.message.text.includes('left')) playLeaveSound();
           break
         case 'control':      applyControlAction(data.action, data.payload); break
-        case 'effect':       window.dispatchEvent(new CustomEvent('room-effect', { detail: data.effectId })); break
+        case 'effect':       window.dispatchEvent(new CustomEvent('room-effect', { detail: { effectId: data.effectId, peerId: data.peerId || null } })); break
         case 'action':       handleRoomAction(data, data.peerId); break
         default: break
       }
@@ -576,9 +577,10 @@ export function useRoom({ username, onToast }) {
   }, [applyControlAction, broadcast, sendToHost])
 
   const sendEffect = useCallback((effectId) => {
-    window.dispatchEvent(new CustomEvent('room-effect', { detail: effectId }))
-    if (isHostRef.current) broadcast({ type: 'effect', effectId })
-    else sendToHost({ type: 'effect', effectId })
+    const selfId = peerRef.current?.id || null
+    window.dispatchEvent(new CustomEvent('room-effect', { detail: { effectId, peerId: selfId } }))
+    if (isHostRef.current) broadcast({ type: 'effect', effectId, peerId: selfId })
+    else sendToHost({ type: 'effect', effectId, peerId: selfId })
   }, [broadcast, sendToHost])
 
   // ── Custom Actions (Hand, Typing, Admin) ────────────────────────────────────

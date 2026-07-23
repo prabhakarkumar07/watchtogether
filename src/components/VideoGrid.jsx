@@ -40,6 +40,7 @@ export default React.memo(function VideoGrid({
   onJoinCall,
   raisedHands = new Set(),
   peerMediaStates = new Map(),
+  getReactions,
 }) {
   const [pinnedId, setPinnedId] = useState(null)
   const containerRef = useRef(null)
@@ -168,6 +169,7 @@ export default React.memo(function VideoGrid({
             isHandRaised={raisedHands.has(pinnedTile.id)}
             isPinned={true}
             onPin={() => handlePin(pinnedTile.id)}
+            reactions={getReactions ? getReactions(pinnedTile.isLocal ? 'local' : pinnedTile.id) : []}
             className="rounded-none border-none"
           />
         </div>
@@ -187,6 +189,7 @@ export default React.memo(function VideoGrid({
                 isHandRaised={raisedHands.has(tile.id)}
                 isPinned={false}
                 onPin={() => handlePin(tile.id)}
+                reactions={getReactions ? getReactions(tile.isLocal ? 'local' : tile.id) : []}
                 className="rounded-none border-none"
               />
             </div>
@@ -223,6 +226,7 @@ export default React.memo(function VideoGrid({
               isHandRaised={raisedHands.has(tile.id)}
               isPinned={pinnedId === tile.id}
               onPin={count > 1 ? () => handlePin(tile.id) : undefined}
+              reactions={getReactions ? getReactions(tile.isLocal ? 'local' : tile.id) : []}
               className="rounded-none border-none"
             />
           </div>

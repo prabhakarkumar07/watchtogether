@@ -18,6 +18,7 @@ import EffectsPicker from './components/EffectsPicker.jsx'
 import LandingPage from './components/LandingPage.jsx'
 import VideoGrid from './components/VideoGrid.jsx'
 import SettingsModal from './components/SettingsModal.jsx'
+import { useGestureDetection } from './hooks/useGestureDetection.js'
 import { Grid } from 'lucide-react'
 
 function isBrowserSupported() {
@@ -54,7 +55,16 @@ export default function App() {
   const [mobileTab, setMobileTab] = useState('video') // video | chat | people
 
   const autoJoinAttempted = useRef(false)
+  // Track whether the user manually selected the grid layout
+  const userSelectedGridRef = useRef(false)
+  // Gesture detection state
+  const [gestureEnabled, setGestureEnabled] = useState(false)
   const room = useRoom({ username, onToast: toast })
+
+  // Stable callback — never changes reference so gesture hook doesn't restart
+  const handleGestureDetected = useCallback((effectId) => {
+    room.sendEffect(effectId)
+  }, [room.sendEffect])
 
   const initialRoomFromUrl = useMemo(() => {
     const params = new URLSearchParams(window.location.search)
@@ -126,9 +136,79 @@ export default function App() {
   const hasLocalCall = !!room.localCallStream
   const canJoinCall = !hasLocalCall && room.remoteCallStreams?.size > 0
 
+  // ── Gesture detection (camera hand gestures → auto reactions) ─────────────
+  const { status: gestureStatus, lastGesture } = useGestureDetection({
+    stream:            room.localCallStream,        // only process local camera
+    onGestureDetected: handleGestureDetected,
+    enabled:           gestureEnabled && hasLocalCall, // auto-disable when not in call
+  })
+
+  // ── Per-tile camera reaction tracking ─────────────────────────────────────
+
+  const [reactionMap, setReactionMap] = useState(() => new Map())
+  const reactionRateLimitRef = useRef(new Map()) // peerId → last trigger ts
+  const RATE_LIMIT_MS = 1500
+  const REACTION_TTL  = 2000
+
+  useEffect(() => {
+    const handleEffect = (e) => {
+      // Parse both legacy string and new { effectId, peerId } formats
+      const effectId = e.detail && typeof e.detail === 'object' ? e.detail.effectId : e.detail
+      const rawPeerId = e.detail && typeof e.detail === 'object' ? e.detail.peerId  : null
+
+      if (!effectId) return
+
+      // Map own peerId → 'local' so it targets the local camera tile
+      // room.selfId may be stale from closure — read from the ref via a stable identity
+      const key = (!rawPeerId || rawPeerId === room.selfId) ? 'local' : rawPeerId
+
+      const now = Date.now()
+      const last = reactionRateLimitRef.current.get(key) || 0
+      if (now - last < RATE_LIMIT_MS) return
+      reactionRateLimitRef.current.set(key, now)
+
+      const reaction = { id: `${key}-${now}`, effectId, ts: now }
+
+      setReactionMap(prev => {
+        const next = new Map(prev)
+        const existing = next.get(key) || []
+        // Cap at 4 concurrent bursts per tile (oldest evicted)
+        const capped = existing.length >= 4 ? existing.slice(1) : existing
+        next.set(key, [...capped, reaction])
+        return next
+      })
+
+      // Auto-expire this reaction after TTL
+      setTimeout(() => {
+        setReactionMap(prev => {
+          const next = new Map(prev)
+          const list = (next.get(key) || []).filter(r => r.id !== reaction.id)
+          if (list.length === 0) next.delete(key)
+          else next.set(key, list)
+          return next
+        })
+      }, REACTION_TTL)
+    }
+
+    window.addEventListener('room-effect', handleEffect)
+    return () => window.removeEventListener('room-effect', handleEffect)
+  }, [room.selfId])  // re-subscribe when selfId changes (on join)
+
+  // Helper: get reactions for a given tile key.
+  // Local tiles call this with 'local'; remote tiles call with the peerId.
+  const getReactions = useCallback((key) => {
+    return reactionMap.get(key) || []
+  }, [reactionMap])
+
   // Derive layout booleans
   const showLeftSidebar  = activeLayout !== 'focus' && activeLayout !== 'grid'
   const showRightPanel   = activeLayout === 'classic'
+
+  // Wrap setActiveLayout to track user intent
+  const handleSetActiveLayout = useCallback((layout) => {
+    userSelectedGridRef.current = layout === 'grid'
+    setActiveLayout(layout)
+  }, [])
 
   // Automatic Layout Switching
   const [preGridLayout, setPreGridLayout] = useState(null)
@@ -138,21 +218,25 @@ export default function App() {
     if (room.videoState?.source && activeLayout === 'grid') {
       setPreGridLayout('grid')
       setActiveLayout('classic')
+      userSelectedGridRef.current = false
     }
     
     // If video/screen share ends and we were previously in grid, switch back
     if (!room.videoState?.source && preGridLayout === 'grid') {
       setActiveLayout('grid')
       setPreGridLayout(null)
+      userSelectedGridRef.current = true
     }
-  }, [room.videoState?.source, activeLayout, preGridLayout, setActiveLayout])
+  }, [room.videoState?.source, activeLayout, preGridLayout])
 
   useEffect(() => {
-    // If video call ends while in grid layout, switch back to classic
-    if (!hasVideoCall && activeLayout === 'grid') {
+    // Only auto-switch to classic if the user did NOT manually select grid.
+    // This prevents the layout from jumping when all cameras are turned off
+    // while the user intentionally stays in grid mode.
+    if (!hasVideoCall && activeLayout === 'grid' && !userSelectedGridRef.current) {
       setActiveLayout('classic')
     }
-  }, [hasVideoCall, activeLayout, setActiveLayout])
+  }, [hasVideoCall, activeLayout])
 
   // Resizable panels
   const leftPanel = useResizablePanel({
@@ -225,7 +309,7 @@ export default function App() {
         onCopyLink={handleCopyLink}
         onLeaveRoom={handleLeaveRoom}
         activeLayout={activeLayout}
-        setActiveLayout={setActiveLayout}
+        setActiveLayout={handleSetActiveLayout}
         layouts={LAYOUTS}
         onOpenSettings={() => setShowSettings(true)}
         raisedHands={room.raisedHands}
@@ -289,6 +373,7 @@ export default function App() {
                   onJoinCall={room.startVideoCall}
                   raisedHands={room.raisedHands}
                   peerMediaStates={room.peerMediaStates}
+                  getReactions={getReactions}
                 />
               )}
             </div>
@@ -359,6 +444,7 @@ export default function App() {
               onJoinCall={room.startVideoCall}
               raisedHands={room.raisedHands}
               peerMediaStates={room.peerMediaStates}
+              getReactions={getReactions}
             />
           ) : (
             <>
@@ -380,6 +466,7 @@ export default function App() {
                     onJoinCall={room.startVideoCall}
                     raisedHands={room.raisedHands}
                     peerMediaStates={room.peerMediaStates}
+                    getReactions={getReactions}
                   />
                 </div>
               )}
@@ -488,7 +575,24 @@ export default function App() {
 
       {/* ════ CELEBRATION EFFECTS FAB ═════════════════════════════════ */}
       {room.status === 'connected' && (
-        <EffectsPicker sendEffect={room.sendEffect} />
+        <EffectsPicker
+          sendEffect={room.sendEffect}
+          gestureEnabled={gestureEnabled}
+          gestureStatus={gestureStatus}
+          onToggleGesture={hasLocalCall ? () => setGestureEnabled(v => !v) : undefined}
+        />
+      )}
+
+      {/* ════ GESTURE DETECTED BADGE ═══════════════════════════════════ */}
+      {lastGesture && (
+        <div
+          className="gesture-badge"
+          key={`${lastGesture.label}-${Date.now()}`}
+          aria-live="polite"
+        >
+          <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>{lastGesture.emoji}</span>
+          <span>{lastGesture.label} detected!</span>
+        </div>
       )}
     </div>
     </>

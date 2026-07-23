@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { MicOff, Pin, PinOff, VideoOff, Crown, VolumeX, Volume2, Volume1, Hand } from 'lucide-react'
 import Tooltip from './Tooltip.jsx'
+import CameraReactionOverlay from './CameraReactionOverlay.jsx'
 
 const VideoTile = React.memo(function VideoTile({
   stream,
@@ -14,6 +15,7 @@ const VideoTile = React.memo(function VideoTile({
   isActiveSpeaker = false,
   isHandRaised = false,
   onPin,
+  reactions   = [],
   className   = '',
   style       = {},
 }) {
@@ -30,6 +32,9 @@ const VideoTile = React.memo(function VideoTile({
 
     // Check if there's actually an enabled video track
     const checkVideo = () => {
+      // stream.active becomes false the moment all tracks are stopped —
+      // this catches the gap between t.stop() and React re-render (black frame fix)
+      if (!stream.active) { setVideoVisible(false); return }
       const tracks = stream.getVideoTracks()
       setVideoVisible(tracks.length > 0 && tracks[0].enabled && tracks[0].readyState !== 'ended')
     }
@@ -43,6 +48,10 @@ const VideoTile = React.memo(function VideoTile({
       t.addEventListener('unmute', checkVideo)
     })
 
+    // stream 'inactive' fires when ALL tracks have ended — most reliable black-screen guard
+    const onInactive = () => setVideoVisible(false)
+    stream.addEventListener('inactive', onInactive)
+
     return () => {
       if (video.srcObject === stream) video.srcObject = null
       tracks.forEach((t) => {
@@ -50,6 +59,7 @@ const VideoTile = React.memo(function VideoTile({
         t.removeEventListener('mute',   checkVideo)
         t.removeEventListener('unmute', checkVideo)
       })
+      stream.removeEventListener('inactive', onInactive)
     }
   }, [stream])
 
@@ -82,6 +92,8 @@ const VideoTile = React.memo(function VideoTile({
         transition: 'box-shadow 0.2s ease-in-out'
       }}
     >
+      {/* Camera reaction emoji overlay */}
+      <CameraReactionOverlay reactions={reactions} />
       {/* Hidden video element — always mounted when stream exists so it stays connected */}
       {stream && (
         <video

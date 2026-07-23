@@ -193,7 +193,9 @@ export default function EffectsOverlay() {
     // ── Event listener ───────────────────────────────────────────────────────
     const handleEffect = (e) => {
       if (localStorage.getItem('disableEffects') === 'true') return
-      spawnParticles(e.detail)
+      // Support both legacy plain-string detail and new { effectId, peerId } object
+      const effectId = e.detail && typeof e.detail === 'object' ? e.detail.effectId : e.detail
+      spawnParticles(effectId)
     }
     window.addEventListener('room-effect', handleEffect)
 

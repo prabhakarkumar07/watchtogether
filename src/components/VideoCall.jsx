@@ -19,6 +19,7 @@ export default React.memo(function VideoCall({
   onJoinCall,
   raisedHands = new Set(),
   peerMediaStates = new Map(),
+  getReactions,
 }) {
   const [pinnedId, setPinnedId] = useState(null)
 
@@ -134,6 +135,7 @@ export default React.memo(function VideoCall({
               isHandRaised={raisedHands.has(tile.id)}
               isPinned={pinnedId === tile.id}
               onPin={totalTiles > 1 ? () => handlePin(tile.id) : undefined}
+              reactions={getReactions ? getReactions(tile.isLocal ? 'local' : tile.id) : []}
               className="rounded-none border-none"
             />
           </div>

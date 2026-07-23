@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Sparkles, BellOff, Bell } from 'lucide-react'
+import { Sparkles, BellOff, Bell, Hand, Loader } from 'lucide-react'
 
 const EFFECTS_LIST = [
   { id: 'confetti',    icon: '🎊', name: 'Confetti' },
@@ -19,7 +19,7 @@ const EFFECTS_LIST = [
 // Default position: bottom-right corner
 const DEFAULT_POS = { x: window.innerWidth - 80, y: window.innerHeight - 80 }
 
-export default function EffectsPicker({ sendEffect }) {
+export default function EffectsPicker({ sendEffect, gestureEnabled, gestureStatus, onToggleGesture }) {
   const [isOpen,     setIsOpen]     = useState(false)
   const [isDisabled, setIsDisabled] = useState(false)
   const [lastEffect, setLastEffect] = useState('confetti')
@@ -189,6 +189,61 @@ export default function EffectsPicker({ sendEffect }) {
         {isDisabled && (
           <div className="px-4 pb-3 text-center text-[10px] text-status-warning">
             Effects are currently muted.
+          </div>
+        )}
+
+        {/* ── Gesture Reactions ── */}
+        {onToggleGesture && (
+          <div className="border-t border-app-border px-4 py-3">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-1.5">
+                <Hand className="h-3.5 w-3.5 text-text-muted" />
+                <span className="text-[11px] font-semibold text-text-primary">Gesture Reactions</span>
+                {gestureStatus === 'loading' && (
+                  <Loader className="h-3 w-3 text-accent-blue animate-spin" />
+                )}
+                {gestureStatus === 'error' && (
+                  <span className="text-[9px] text-status-error">offline</span>
+                )}
+              </div>
+              <button
+                onClick={onToggleGesture}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  gestureEnabled ? 'bg-accent-blue' : 'bg-app-hover border border-app-border'
+                }`}
+                title={gestureEnabled ? 'Disable gesture reactions' : 'Enable gesture reactions'}
+                aria-label="Toggle gesture reactions"
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+                    gestureEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {gestureEnabled && (
+              <div className="grid grid-cols-2 gap-1">
+                {[
+                  { emoji: '❤️', label: 'ILY sign',    effect: 'Hearts'  },
+                  { emoji: '👍', label: 'Thumbs up',   effect: 'Likes'   },
+                  { emoji: '✌️', label: 'Peace sign',  effect: 'Sparks'  },
+                  { emoji: '🖐️', label: 'Open hand',   effect: 'Confetti'},
+                  { emoji: '🤙', label: 'Shaka / hang loose', effect: 'Fire' },
+                ].map(g => (
+                  <div key={g.emoji} className="flex items-center gap-1.5 text-[10px] text-text-muted">
+                    <span className="text-base leading-none">{g.emoji}</span>
+                    <span>{g.label} → {g.effect}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {gestureStatus === 'loading' && gestureEnabled && (
+              <p className="text-[9px] text-text-muted mt-1.5">
+                Loading gesture model… (first-time only)
+              </p>
+            )}
           </div>
         )}
       </div>
